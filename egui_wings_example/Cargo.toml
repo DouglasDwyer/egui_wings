@@ -1,0 +1,25 @@
+[package]
+name = "egui_wings_example"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+
+[profile.dev]
+panic = "abort"
+
+[dependencies]
+egui = { workspace = true, features = [ "default_fonts" ] }
+egui-wgpu.workspace = true
+egui_wings.workspace = true
+egui_wings_host.workspace = true
+egui-winit.workspace = true
+example_host.workspace = true
+geese.workspace = true
+pollster.workspace = true
+raw-window-handle.workspace = true
+wasmi_runtime_layer.workspace = true
+#wasmtime_runtime_layer.workspace = true
+wings_host.workspace = true
+winit.workspace = true

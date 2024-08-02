@@ -1,0 +1,14 @@
+[package]
+name = "example_plugin"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = [ "cdylib" ]
+
+[dependencies]
+example_host.workspace = true
+wings.workspace = true
+egui_wings.workspace = true

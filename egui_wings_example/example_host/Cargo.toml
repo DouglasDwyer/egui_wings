@@ -1,0 +1,7 @@
+[package]
+name = "example_host"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+wings.workspace = true

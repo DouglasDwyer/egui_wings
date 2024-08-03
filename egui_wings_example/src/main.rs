@@ -25,7 +25,7 @@ pub struct EguiExample;
 
 impl EguiExample {
     fn on_error(&mut self, error: &wings_host::on::Error) {
-        panic!("Error occurred:\n{}", error.error);
+        panic!("Error occurred:\n{:?}", error.error);
     }
 }
 
@@ -53,10 +53,12 @@ impl Host for ExampleHostSystems {
     const EVENTS: Events<Self> = events()
         .with::<example_host::on::Render>();
 
+    //type Engine = wasmtime_runtime_layer::Engine;
     type Engine = wasmi_runtime_layer::Engine;
 
     fn create_engine(_: &mut GeeseContextHandle<WingsHost<Self>>) -> Self::Engine {
         wasmi_runtime_layer::Engine::default()
+        //wasmtime_runtime_layer::Engine::default()
     }
 }
 
@@ -84,7 +86,7 @@ async fn run() {
     let window = Arc::new(window);
     let initial_width = 1360;
     let initial_height = 768;
-    window.request_inner_size(PhysicalSize::new(initial_width, initial_height));
+    let _ = window.request_inner_size(PhysicalSize::new(initial_width, initial_height));
     let instance = Instance::new(InstanceDescriptor::default());
     let surface = instance
         .create_surface(window.clone())
@@ -136,11 +138,11 @@ async fn run() {
     let mut egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
     let mut close_requested = false;
-    let mut modifiers = ModifiersState::default();
-
-    let mut scale_factor = 1.0;
+    
+    let scale_factor = 1.0;
 
     let mut ctx = create_geese_context();
+    ctx.get_mut::<EguiHost>().set_context(egui_renderer.context().clone());
 
     let _ = event_loop.run(move |event, elwt| {
         elwt.set_control_flow(ControlFlow::Poll);
@@ -153,9 +155,7 @@ async fn run() {
                     WindowEvent::CloseRequested => {
                         close_requested = true;
                     }
-                    WindowEvent::ModifiersChanged(new) => {
-                        modifiers = new.state();
-                    }
+                    WindowEvent::ModifiersChanged(_) => {}
                     WindowEvent::KeyboardInput {
                         event: kb_event, ..
                     } => {
@@ -210,9 +210,6 @@ async fn run() {
                             pixels_per_point: window.scale_factor() as f32 * scale_factor,
                         };
 
-                        // Raise event that will be propagated to WASM plugin
-                        ctx.flush()
-                            .with(example_host::on::Render);
 
                         egui_renderer.draw(
                             &device,
@@ -221,7 +218,15 @@ async fn run() {
                             &window,
                             &surface_view,
                             screen_descriptor,
-                            |ctx| {},
+                            |cyx| {
+                                
+                                // Raise event that will be propagated to WASM plugin
+                                let startt = std::time::Instant::now();
+                                ctx.flush()
+                                    .with(example_host::on::Render);
+                                let endd = std::time::Instant::now() - startt;
+                                println!("Took {endd:?}");
+                            },
                         );
 
                         queue.submit(Some(encoder.finish()));
@@ -287,7 +292,7 @@ impl EguiRenderer {
     }
 
     pub fn handle_input(&mut self, window: &winit::window::Window, event: &WindowEvent) {
-        self.state.on_window_event(window, event);
+        let _ = self.state.on_window_event(window, event);
     }
 
     pub fn ppp(&mut self, v: f32) {
@@ -309,7 +314,7 @@ impl EguiRenderer {
             .set_pixels_per_point(screen_descriptor.pixels_per_point);
 
         let raw_input = self.state.take_egui_input(window);
-        let full_output = self.state.egui_ctx().run(raw_input, |ui| {
+        let full_output = self.state.egui_ctx().run(raw_input, |_| {
             run_ui(self.state.egui_ctx());
         });
 
@@ -320,6 +325,7 @@ impl EguiRenderer {
             .state
             .egui_ctx()
             .tessellate(full_output.shapes, self.state.egui_ctx().pixels_per_point());
+        
         for (id, image_delta) in &full_output.textures_delta.set {
             self.renderer
                 .update_texture(device, queue, *id, image_delta);

@@ -1,3 +1,5 @@
+use core::str;
+
 use egui_wings::*;
 use example_host::*;
 use wings::*;
@@ -7,6 +9,7 @@ instantiate_systems!(ExampleHost, [PluginSystem]);
 #[export_system]
 pub struct PluginSystem {
     ctx: WingsContextHandle<Self>,
+    text: String
 }
 
 impl PluginSystem {
@@ -14,23 +17,15 @@ impl PluginSystem {
         let egui = self.ctx.get::<dyn Egui>();
         let ctx = egui.context();
         
-        use std::panic;
-
-        panic::set_hook(Box::new(|x| {
-            global_print(&x.to_string());
-        }));
-        
-        drop(ctx);
-        /*
-        Window::new("winit + egui + wgpu says hello!")
-            .resizable(true)d
+        let xx = Window::new("winit + egui + wgpu says hello!")
+            .resizable(true)
             .vscroll(true)
             .default_open(false)
         .show(&ctx, |ui| {
             ui.label("Label!");
 
             if ui.button("Button!").clicked() {
-                //println!("boom!")
+                global_print("bcouom!");
             }
 
             ui.separator();
@@ -46,7 +41,9 @@ impl PluginSystem {
                     //scale_factor = (scale_factor + 0.1).min(3.0);
                 }
             });
-        }); */
+
+            ui.text_edit_singleline(&mut self.text);
+        });
     }
 }
 
@@ -56,6 +53,8 @@ impl WingsSystem for PluginSystem {
     const EVENT_HANDLERS: EventHandlers<Self> = event_handlers().with(Self::draw_ui);
 
     fn new(ctx: WingsContextHandle<Self>) -> Self {
-        Self { ctx }
+        std::panic::set_hook(Box::new(|x| global_print(&format!("{x}"))));
+
+        Self { ctx, text: String::default() }
     }
 }

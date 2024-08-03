@@ -23,6 +23,7 @@ egui-winit = { version = "0.28.1", default-features = false }
 geese = { version = "0.3.9", default-features = false }
 pollster = { version = "0.3.0", default-features = false }
 raw-window-handle = { version = "0.6.2", default-features = false }
+serde = { version = "1.0.204", default-features = false }
 wasmi_runtime_layer = { version = "0.36.0", default-features = false }
 wasmtime_runtime_layer = { version = "23.0.0", default-features = true }
 wings = { version = "0.1.2", default-features = false }
@@ -37,7 +38,15 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/DouglasDwyer/egui_wings"
 
 [patch.crates-io]
+egui = { path = "../egui_dyn_context/crates/egui" }
+epaint = { path = "../egui_dyn_context/crates/epaint" }
+ecolor = { path = "../egui_dyn_context/crates/ecolor" }
+wings_host = { path = "../wings/wings_host" }
 wings_macro = { path = "../wings/wings_macro" }
+wings = { path = "../wings" }
+
+[profile.dev]
+panic = "abort"
 
 [package]
 name = "egui_wings"
@@ -46,4 +55,5 @@ edition = "2021"
 
 [dependencies]
 egui.workspace = true
+serde.workspace = true
 wings.workspace = true

@@ -22,27 +22,13 @@ impl AsMut<dyn Egui> for EguiHost {
 }
 
 impl Egui for EguiHost {
-    fn get_state(&self) -> EguiSerializedState {
-        let input_state = self.ctx.input(|x| x.clone());
-        let memory = self.ctx.memory(|x| x.clone());
-        let options = self.ctx.options(|x| x.clone());
-        let style = self.ctx.style();
-
-        EguiSerializedState {
-            graphics: 0,
-            input_state,
-            memory,
-            options,
-            style
-        }
+    fn get_state(&self) -> SerializedViewport {
+        SerializedViewport::FromContext(self.ctx.clone())
     }
 
-    fn set_state(&self, state: EguiSerializedState) {
-        loop { print!("set state"); }
-        self.ctx.input_mut(|x| *x = state.input_state);
-        self.ctx.memory_mut(|x| *x = state.memory);
-        self.ctx.options_mut(|x| *x = state.options);
-        self.ctx.set_style(state.style);
+    fn set_state(&self, state: SerializedViewport) {
+        let SerializedViewport::Owned(owned_state) = state else { panic!("Received context.") };
+        owned_state.apply_to_context(&self.ctx);
     }
 
     fn print(&self, value: &str) {

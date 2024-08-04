@@ -1,5 +1,3 @@
-use core::str;
-
 use egui_wings::*;
 use example_host::*;
 use wings::*;
@@ -16,16 +14,16 @@ impl PluginSystem {
     fn draw_ui(&mut self, _: &example_host::on::Render) {
         let egui = self.ctx.get::<dyn Egui>();
         let ctx = egui.context();
-        for i in 0..1 {
+        for i in 0..0 {
             Window::new(format!("winit + egui + wgpu says hello! {i}"))
                 .resizable(true)
                 .vscroll(true)
                 .default_open(false)
             .show(&ctx, |ui| {
-                ui.label("Label!");
+                ui.label("Larfddffdtdedffrlr!");
     
                 if ui.button("Button!").clicked() {
-                    global_print("boom!");
+                    global_print("boorrm!");
                 }
     
                 ui.separator();
@@ -45,6 +43,7 @@ impl PluginSystem {
                 ui.text_edit_singleline(&mut self.text);
             });
         }
+        //ctx.graphics(|x| global_prdint(&x.print_it()));
     }
 }
 

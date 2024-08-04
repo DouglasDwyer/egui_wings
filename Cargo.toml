@@ -17,7 +17,7 @@ example_guest = { path = "egui_wings_example/example_guest" }
 example_host = { path = "egui_wings_example/example_host" }
 
 # External dependencies
-egui = { version = "0.28.1", default-features = false, features = [ "persistence", "serde" ] }
+egui = { version = "0.28.1", default-features = false, features = [ "snapshot" ] }
 egui-wgpu = { version = "0.28.1", default-features = false, features = ["winit"] }
 egui-winit = { version = "0.28.1", default-features = false }
 fxhash = { version = "0.2.1", default-features = false }

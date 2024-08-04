@@ -57,8 +57,8 @@ impl Host for ExampleHostSystems {
     type Engine = wasmi_runtime_layer::Engine;
 
     fn create_engine(_: &mut GeeseContextHandle<WingsHost<Self>>) -> Self::Engine {
-        wasmi_runtime_layer::Engine::default()
         //wasmtime_runtime_layer::Engine::default()
+        wasmi_runtime_layer::Engine::default()
     }
 }
 

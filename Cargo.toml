@@ -20,10 +20,12 @@ example_host = { path = "egui_wings_example/example_host" }
 egui = { version = "0.28.1", default-features = false, features = [ "persistence", "serde" ] }
 egui-wgpu = { version = "0.28.1", default-features = false, features = ["winit"] }
 egui-winit = { version = "0.28.1", default-features = false }
+fxhash = { version = "0.2.1", default-features = false }
 geese = { version = "0.3.9", default-features = false }
 pollster = { version = "0.3.0", default-features = false }
 raw-window-handle = { version = "0.6.2", default-features = false }
 serde = { version = "1.0.204", default-features = false }
+wasmi = { version = "0.36.0", default-features = false }
 wasmi_runtime_layer = { version = "0.36.0", default-features = false }
 wasmtime_runtime_layer = { version = "23.0.0", default-features = true }
 wings = { version = "0.1.2", default-features = false }
@@ -55,5 +57,6 @@ edition = "2021"
 
 [dependencies]
 egui.workspace = true
+fxhash.workspace = true
 serde.workspace = true
 wings.workspace = true

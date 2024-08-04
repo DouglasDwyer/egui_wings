@@ -16,34 +16,35 @@ impl PluginSystem {
     fn draw_ui(&mut self, _: &example_host::on::Render) {
         let egui = self.ctx.get::<dyn Egui>();
         let ctx = egui.context();
-        
-        let xx = Window::new("winit + egui + wgpu says hello!")
-            .resizable(true)
-            .vscroll(true)
-            .default_open(false)
-        .show(&ctx, |ui| {
-            ui.label("Label!");
-
-            if ui.button("Button!").clicked() {
-                global_print("bcouom!");
-            }
-
-            ui.separator();
-            ui.horizontal(|ui| {
-                ui.label(format!(
-                    "Pixels per point: {}",
-                    ctx.pixels_per_point()
-                ));
-                if ui.button("-").clicked() {
-                    //scale_factor = (scale_factor - 0.1).max(0.3);
+        for i in 0..1 {
+            Window::new(format!("winit + egui + wgpu says hello! {i}"))
+                .resizable(true)
+                .vscroll(true)
+                .default_open(false)
+            .show(&ctx, |ui| {
+                ui.label("Label!");
+    
+                if ui.button("Button!").clicked() {
+                    global_print("boom!");
                 }
-                if ui.button("+").clicked() {
-                    //scale_factor = (scale_factor + 0.1).min(3.0);
-                }
+    
+                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label(format!(
+                        "Pixels per point: {}",
+                        ctx.pixels_per_point()
+                    ));
+                    if ui.button("-").clicked() {
+                        //scale_factor = (scale_factor - 0.1).max(0.3);
+                    }
+                    if ui.button("+").clicked() {
+                        //scale_factor = (scale_factor + 0.1).min(3.0);
+                    }
+                });
+    
+                ui.text_edit_singleline(&mut self.text);
             });
-
-            ui.text_edit_singleline(&mut self.text);
-        });
+        }
     }
 }
 

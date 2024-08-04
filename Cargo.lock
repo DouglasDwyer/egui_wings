@@ -498,6 +498,7 @@ name = "egui_wings"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "fxhash",
  "serde",
  "wings",
 ]

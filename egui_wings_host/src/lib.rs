@@ -23,11 +23,6 @@ impl AsMut<dyn Egui> for EguiHost {
 
 impl Egui for EguiHost {
     fn get_snapshot(&self, deltas: ContextSnapshotDeltas) -> CreateContextSnapshot {
-        /*self.ctx.snapshot_for(&ContextSnapshotDeltas::default(), |x| {
-            let serded = egui_wings::wings::marshal::bincode::serialize(x).unwrap();
-            let unserded: ContextSnapshot = egui_wings::wings::marshal::bincode::deserialize(&serded).unwrap();
-            println!("SUCC ess");
-        });*/
         CreateContextSnapshot::FromContext(self.ctx.clone(), deltas)
     }
 
@@ -39,6 +34,10 @@ impl Egui for EguiHost {
 
     fn print(&self, value: &str) {
         println!("!!\n{value}\n!!");
+    }
+
+    fn hal_time(&self) -> u128 {
+        std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_nanos()
     }
 }
 

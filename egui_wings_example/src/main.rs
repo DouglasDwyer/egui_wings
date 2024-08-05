@@ -53,12 +53,10 @@ impl Host for ExampleHostSystems {
     const EVENTS: Events<Self> = events()
         .with::<example_host::on::Render>();
 
-    //type Engine = wasmtime_runtime_layer::Engine;
-    type Engine = wasmi_runtime_layer::Engine;
+    type Engine = wasmtime_runtime_layer::Engine;
 
     fn create_engine(_: &mut GeeseContextHandle<WingsHost<Self>>) -> Self::Engine {
-        //wasmtime_runtime_layer::Engine::default()
-        wasmi_runtime_layer::Engine::default()
+        wasmtime_runtime_layer::Engine::default()
     }
 }
 
@@ -225,7 +223,7 @@ async fn run() {
                                 ctx.flush()
                                     .with(example_host::on::Render);
                                 let endd = std::time::Instant::now() - startt;
-                                println!("Took {endd:?}");
+                                //println!("Took {endd:?}");
                             },
                         );
 

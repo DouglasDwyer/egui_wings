@@ -9,7 +9,7 @@ repository.workspace = true
 crate-type = [ "cdylib" ]
 
 [dependencies]
-egui = { workspace = true, features = [ "default_fonts" ] }
+egui.workspace = true
 egui_wings.workspace = true
 example_host.workspace = true
 wings.workspace = true

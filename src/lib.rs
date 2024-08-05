@@ -16,6 +16,8 @@ pub trait Egui: 'static {
 
     #[global(global_print)]
     fn print(&self, value: &str);
+    #[global(global_time)]
+    fn hal_time(&self) -> u128;
 }
 
 impl dyn Egui {
@@ -34,8 +36,21 @@ impl dyn Egui {
         else {
             context.snapshot_deltas()
         };
+        let startt = global_time();
         let CreateContextSnapshot::Created(snapshot) = self.get_snapshot(deltas) else { unreachable!() };
+        let endd = global_time() - startt;
+        
         context.apply_snapshot(snapshot);
+
+        context.snapshot_for(&deltas, |x| {
+            let serded = wings::marshal::bincode::serialize(x).unwrap();
+            let startt2 = global_time();
+            let edded = wings::marshal::bincode::deserialize::<ContextSnapshot>(&serded).unwrap();
+            let endd2 = global_time() - startt2;
+
+            global_print(&format!("The initial snappy was {} bytes and deser in {endd2}, but it took {endd}", serded.len()));
+        });
+
         let initial_deltas = context.snapshot_deltas();
 
         EguiHandle {

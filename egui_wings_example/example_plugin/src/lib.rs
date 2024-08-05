@@ -7,6 +7,7 @@ instantiate_systems!(ExampleHost, [PluginSystem]);
 #[export_system]
 pub struct PluginSystem {
     ctx: WingsContextHandle<Self>,
+    click_count: u32,
     text: String
 }
 
@@ -14,36 +15,20 @@ impl PluginSystem {
     fn draw_ui(&mut self, _: &example_host::on::Render) {
         let egui = self.ctx.get::<dyn Egui>();
         let ctx = egui.context();
-        for i in 0..0 {
-            Window::new(format!("winit + egui + wgpu says hello! {i}"))
-                .resizable(true)
-                .vscroll(true)
-                .default_open(false)
-            .show(&ctx, |ui| {
-                ui.label("Larfddffdtdedffrlr!");
-    
-                if ui.button("Button!").clicked() {
-                    global_print("boorrm!");
-                }
-    
-                ui.separator();
-                ui.horizontal(|ui| {
-                    ui.label(format!(
-                        "Pixels per point: {}",
-                        ctx.pixels_per_point()
-                    ));
-                    if ui.button("-").clicked() {
-                        //scale_factor = (scale_factor - 0.1).max(0.3);
-                    }
-                    if ui.button("+").clicked() {
-                        //scale_factor = (scale_factor + 0.1).min(3.0);
-                    }
-                });
-    
-                ui.text_edit_singleline(&mut self.text);
-            });
-        }
-        //ctx.graphics(|x| global_prdint(&x.print_it()));
+        Window::new(format!("webassemcbly says hello!"))
+            .resizable(true)
+            .vscroll(true)
+            .default_open(false)
+        .show(&ctx, |ui| {
+            ui.label(format!("Click count: {}", self.click_count));
+
+            if ui.button("Button!").clicked() {
+                self.click_count += 1;
+            }
+
+            ui.separator();    
+            ui.text_edit_singleline(&mut self.text);
+        });
     }
 }
 
@@ -53,8 +38,6 @@ impl WingsSystem for PluginSystem {
     const EVENT_HANDLERS: EventHandlers<Self> = event_handlers().with(Self::draw_ui);
 
     fn new(ctx: WingsContextHandle<Self>) -> Self {
-        std::panic::set_hook(Box::new(|x| global_print(&format!("{x}"))));
-
-        Self { ctx, text: String::default() }
+        Self { ctx, click_count: 0, text: String::default() }
     }
 }

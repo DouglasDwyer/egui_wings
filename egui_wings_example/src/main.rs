@@ -208,7 +208,6 @@ async fn run() {
                             pixels_per_point: window.scale_factor() as f32 * scale_factor,
                         };
 
-
                         egui_renderer.draw(
                             &device,
                             &queue,
@@ -217,13 +216,8 @@ async fn run() {
                             &surface_view,
                             screen_descriptor,
                             |cyx| {
-                                
-                                // Raise event that will be propagated to WASM plugin
-                                let startt = std::time::Instant::now();
                                 ctx.flush()
                                     .with(example_host::on::Render);
-                                let endd = std::time::Instant::now() - startt;
-                                //println!("Took {endd:?}");
                             },
                         );
 

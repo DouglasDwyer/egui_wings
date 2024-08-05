@@ -7,20 +7,24 @@ use std::sync::*;
 use wings::*;
 pub use wings;
 
+/// The inner context which temporarily stores state that will be copied to the host.
 static CONTEXT: OnceLock<Context> = OnceLock::new();
 
+/// Allows for accessing the shared `egui::Context` for plugins.
 #[system_trait(host)]
 pub trait Egui: 'static {
-    fn get_snapshot(&self, deltas: ContextSnapshotDeltas) -> CreateContextSnapshot;
-    fn set_snapshot(&self, state: CreateContextSnapshot);
+    /// Begins a context transaction by obtaining a snapshot containing the state
+    /// of the host's `egui::Context` so that it may be edited on the guest.
+    #[doc(hidden)]
+    fn begin_context_edit(&self, deltas: ContextSnapshotDeltas) -> CreateContextSnapshot;
 
-    #[global(global_print)]
-    fn print(&self, value: &str);
-    #[global(global_time)]
-    fn hal_time(&self) -> u128;
+    /// Updates the host `egui::Context` to use the given guest state, finishing the transaction.
+    #[doc(hidden)]
+    fn end_context_edit(&self, state: CreateContextSnapshot);
 }
 
 impl dyn Egui {
+    /// Initiates an `egui` transaction and produces a temporary handle to the `egui::Context`.
     pub fn context(&self) -> EguiHandle {
         let mut initialized = false;
         let context = CONTEXT.get_or_init(|| {
@@ -36,21 +40,9 @@ impl dyn Egui {
         else {
             context.snapshot_deltas()
         };
-        let startt = global_time();
-        let CreateContextSnapshot::Created(snapshot) = self.get_snapshot(deltas) else { unreachable!() };
-        let endd = global_time() - startt;
-        
+
+        let CreateContextSnapshot::Created(snapshot) = self.begin_context_edit(deltas) else { unreachable!() };
         context.apply_snapshot(snapshot);
-
-        context.snapshot_for(&deltas, |x| {
-            let serded = wings::marshal::bincode::serialize(x).unwrap();
-            let startt2 = global_time();
-            let edded = wings::marshal::bincode::deserialize::<ContextSnapshot>(&serded).unwrap();
-            let endd2 = global_time() - startt2;
-
-            global_print(&format!("The initial snappy was {} bytes and deser in {endd2}, but it took {endd}", serded.len()));
-        });
-
         let initial_deltas = context.snapshot_deltas();
 
         EguiHandle {
@@ -59,9 +51,14 @@ impl dyn Egui {
         }
     }
 }
-    
+
+/// Provides access to an `egui::Context` which is synchronized with the host.
+/// The `egui::Context` may be cloned, but the context is invalidated when this
+/// handle is dropped.
 pub struct EguiHandle<'a> {
+    /// The underlying `egui` context.
     ctx: &'a dyn Egui,
+    /// The state of the context at the beginning of the transaction.
     initial_deltas: ContextSnapshotDeltas
 }
 
@@ -75,12 +72,17 @@ impl<'a> Deref for EguiHandle<'a> {
 
 impl<'a> Drop for EguiHandle<'a> {
     fn drop(&mut self) {
-        self.ctx.set_snapshot(CreateContextSnapshot::FromContext(self.clone(), self.initial_deltas));
+        self.ctx.end_context_edit(CreateContextSnapshot::FromContext(self.clone(), self.initial_deltas));
     }
 }
 
+/// Allows for serializing a `ContextSnapshot` across the WASM boundary.
+#[doc(hidden)]
 pub enum CreateContextSnapshot {
+    /// This variant is used whenever a snapshot is deserialized.
     Created(ContextSnapshot),
+    /// When this object is serialized, it will use a snapshot of the provided
+    /// context with the given deltas.
     FromContext(Context, ContextSnapshotDeltas)
 }
 

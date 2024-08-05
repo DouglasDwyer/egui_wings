@@ -15,7 +15,7 @@ impl PluginSystem {
     fn draw_ui(&mut self, _: &example_host::on::Render) {
         let egui = self.ctx.get::<dyn Egui>();
         let ctx = egui.context();
-        Window::new(format!("webassemcbly says hello!"))
+        Window::new(format!("webassembly says hello!"))
             .resizable(true)
             .vscroll(true)
             .default_open(false)

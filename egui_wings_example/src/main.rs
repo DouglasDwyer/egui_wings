@@ -140,6 +140,7 @@ async fn run() {
     let scale_factor = 1.0;
 
     let mut ctx = create_geese_context();
+    // Set the context that will be exposed to WASM plugins
     ctx.get_mut::<EguiHost>().set_context(egui_renderer.context().clone());
 
     let _ = event_loop.run(move |event, elwt| {
@@ -215,7 +216,7 @@ async fn run() {
                             &window,
                             &surface_view,
                             screen_descriptor,
-                            |cyx| {
+                            |_| {
                                 ctx.flush()
                                     .with(example_host::on::Render);
                             },

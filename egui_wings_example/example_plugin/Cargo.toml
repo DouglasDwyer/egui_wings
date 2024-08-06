@@ -8,12 +8,9 @@ repository.workspace = true
 [lib]
 crate-type = [ "cdylib" ]
 
-[profile.release]
-lto = "fat"
-opt-level = 3
-
 [dependencies]
 egui.workspace = true
+egui_demo_lib.workspace = true
 egui_wings.workspace = true
 example_host.workspace = true
 wings.workspace = true

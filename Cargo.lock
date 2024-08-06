@@ -648,7 +648,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "ecolor"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -659,7 +659,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 dependencies = [
  "accesskit",
  "ahash",
@@ -710,7 +710,7 @@ dependencies = [
 [[package]]
 name = "egui_demo_lib"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 dependencies = [
  "egui",
  "egui_extras",
@@ -721,7 +721,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 dependencies = [
  "ahash",
  "egui",
@@ -763,7 +763,6 @@ dependencies = [
 name = "egui_wings_host"
 version = "0.1.0"
 dependencies = [
- "egui",
  "egui_wings",
  "geese",
  "wings_host",
@@ -778,7 +777,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 dependencies = [
  "bytemuck",
  "serde",
@@ -825,7 +824,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -842,7 +841,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.28.1"
-source = "git+https://github.com/DouglasDwyer/egui?rev=df0e5b85b243173c4ab9b792b679ddb0fd6df641#df0e5b85b243173c4ab9b792b679ddb0fd6df641"
+source = "git+https://github.com/DouglasDwyer/egui?rev=a66fe0a80b8379720c08dc39a89c768169ab41cf#a66fe0a80b8379720c08dc39a89c768169ab41cf"
 
 [[package]]
 name = "equivalent"

@@ -1,4 +1,17 @@
-use egui_demo_lib::*;
+# egui_wings
+
+[![Crates.io](https://img.shields.io/crates/v/egui_wings.svg)](https://crates.io/crates/egui_wings)
+[![Docs.rs](https://docs.rs/egui_wings/badge.svg)](https://docs.rs/egui_wings)
+
+This crate facilitates sharing an `egui::Context` between a host and multiple guest WASM modules. This allows WASM plugins to draw UI and easily display it via the host.
+
+---
+
+### Usage
+
+The following code snippet shows how to use `egui_wings` from a WASM plugin (the complete example may be found in the [`egui_wings_example` folder](/egui_wings_example/)). It defines a `WingsSystem` which will store the WASM plugin's state. Each frame, the `draw_ui` method is invoked. It accesses the host `egui::Context` via a system dependency and then makes normal `egui` calls to draw a UI.
+
+```rust
 use egui_wings::*;
 use example_host::*;
 use wings::*;
@@ -10,36 +23,19 @@ instantiate_systems!(ExampleHost, [PluginSystem]);
 pub struct PluginSystem {
     /// A handle for accessing system dependencies.
     ctx: WingsContextHandle<Self>,
-    /// The number of times the example button was clicked.
-    click_count: u32,
-    /// The text that the user entered in the example field.
-    text: String,
-    /// The widget gallery window.
-    gallery: WidgetGallery
 }
 
 impl PluginSystem {
     /// Submits the `egui` commands to draw the debug windows.
     fn draw_ui(&mut self, _: &example_host::on::Render) {
         let egui = self.ctx.get::<dyn Egui>();
-        let ctx = egui.context();
-
         Window::new("webassembly says hello!")
             .resizable(true)
             .vscroll(true)
             .default_open(false)
-        .show(&ctx, |ui| {
-            ui.label(format!("Click count: {}", self.click_count));
-
-            if ui.button("Button!").clicked() {
-                self.click_count += 1;
-            }
-
-            ui.separator();    
-            ui.text_edit_singleline(&mut self.text);
+        .show(&egui.context(), |ui| {
+            ui.label("Hello there!");
         });
-
-        self.gallery.show(&ctx, &mut true);
     }
 }
 
@@ -49,6 +45,7 @@ impl WingsSystem for PluginSystem {
     const EVENT_HANDLERS: EventHandlers<Self> = event_handlers().with(Self::draw_ui);
 
     fn new(ctx: WingsContextHandle<Self>) -> Self {
-        Self { ctx, click_count: 0, text: String::default(), gallery: WidgetGallery::default() }
+        Self { ctx }
     }
 }
+```

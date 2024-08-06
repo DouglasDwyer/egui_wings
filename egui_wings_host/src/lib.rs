@@ -1,3 +1,7 @@
+#![deny(warnings)]
+#![forbid(unsafe_code)]
+#![warn(clippy::missing_docs_in_private_items)]
+
 use egui_wings::*;
 use geese::*;
 

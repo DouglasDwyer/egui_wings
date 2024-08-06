@@ -36,13 +36,14 @@ version = "0.1.0"
 edition = "2021"
 description = "egui bindings for WASM plugins"
 license = "MIT OR Apache-2.0"
+readme = "README.md"
 repository = "https://github.com/DouglasDwyer/egui_wings"
 
 [patch.crates-io]
-egui = { git = "https://github.com/DouglasDwyer/egui", rev = "df0e5b85b243173c4ab9b792b679ddb0fd6df641" }
-egui_demo_lib = { git = "https://github.com/DouglasDwyer/egui", rev = "df0e5b85b243173c4ab9b792b679ddb0fd6df641" }
-epaint = { git = "https://github.com/DouglasDwyer/egui", rev = "df0e5b85b243173c4ab9b792b679ddb0fd6df641" }
-ecolor = { git = "https://github.com/DouglasDwyer/egui", rev = "df0e5b85b243173c4ab9b792b679ddb0fd6df641" }
+egui = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
+egui_demo_lib = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
+epaint = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
+ecolor = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
 wings_macro = { path = "../wings/wings_macro" }
 
 [profile.dev]
@@ -54,8 +55,12 @@ opt-level = 3
 
 [package]
 name = "egui_wings"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
 egui.workspace = true

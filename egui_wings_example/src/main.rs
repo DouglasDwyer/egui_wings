@@ -60,6 +60,7 @@ impl Host for ExampleHostSystems {
     }
 }
 
+/// Creates the `GeeseContext` that will hold the host plugin systems.
 fn create_geese_context() -> GeeseContext {
     let mut ctx = GeeseContext::default();
     ctx.flush()

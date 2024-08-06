@@ -2,6 +2,10 @@
 name = "example_host"
 version.workspace = true
 edition.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
 wings.workspace = true

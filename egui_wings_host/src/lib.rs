@@ -3,6 +3,7 @@
 #![warn(clippy::missing_docs_in_private_items)]
 
 use egui_wings::*;
+pub use egui_wings::Egui;
 use geese::*;
 
 /// Implements the `egui_wings::Egui` trait for WASM guest modules.

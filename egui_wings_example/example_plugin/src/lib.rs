@@ -1,5 +1,6 @@
 use egui_demo_lib::*;
 use egui_wings::*;
+use egui_wings::egui::*;
 use example_host::*;
 use wings::*;
 

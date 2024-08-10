@@ -2,7 +2,11 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+//! Provides a host system implementation of [`egui_wings::Egui`] with which WASM
+//! applications may interact.
+
 use egui_wings::*;
+use egui_wings::egui::*;
 pub use egui_wings::Egui;
 use geese::*;
 
@@ -36,8 +40,7 @@ impl Egui for EguiHost {
     }
 
     fn end_context_edit(&self, state: CreateContextSnapshot) {
-        let CreateContextSnapshot::Created(to_apply) = state else { unreachable!() };
-        self.ctx.apply_snapshot(to_apply);
+        state.apply(&self.ctx);
     }
 }
 

@@ -252,7 +252,7 @@ pub struct EguiRenderer {
 }
 
 impl EguiRenderer {
-    pub fn context(&self) -> &Context {
+    pub fn context(&self) -> &egui::Context {
         self.state.egui_ctx()
     }
 
@@ -301,7 +301,7 @@ impl EguiRenderer {
         window: &winit::window::Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&Context),
+        run_ui: impl FnOnce(&egui::Context),
     ) {
         self.state
             .egui_ctx()

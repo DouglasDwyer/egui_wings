@@ -17,7 +17,7 @@ example_guest = { path = "egui_wings_example/example_guest" }
 example_host = { path = "egui_wings_example/example_host" }
 
 # External dependencies
-egui = { version = "0.28.1", default-features = false, features = ["snapshot"] }
+egui = { version = "=0.28.1", default-features = false, features = [ "serde" ] }
 egui_demo_lib = { version = "0.28.1", default-features = false }
 egui-wgpu = { version = "0.28.1", default-features = false, features = ["winit"] }
 egui-winit = { version = "0.28.1", default-features = false, features = ["clipboard", "links"] }
@@ -25,7 +25,6 @@ geese = { version = "0.3.9", default-features = false }
 pollster = { version = "0.3.0", default-features = false }
 raw-window-handle = { version = "0.6.2", default-features = false }
 serde = { version = "1.0.204", default-features = false }
-wasmi_runtime_layer = { version = "0.36.0", default-features = false }
 wasmtime_runtime_layer = { version = "23.0.0", default-features = true }
 wings = { version = "0.1.3", default-features = false }
 wings_host = { version = "0.1.3", default-features = false }
@@ -38,12 +37,6 @@ description = "egui bindings for WASM plugins"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/DouglasDwyer/egui_wings"
-
-[patch.crates-io]
-egui = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
-egui_demo_lib = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
-epaint = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
-ecolor = { git = "https://github.com/DouglasDwyer/egui", rev = "a66fe0a80b8379720c08dc39a89c768169ab41cf" }
 
 [profile.dev]
 panic = "abort"

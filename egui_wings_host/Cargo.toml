@@ -11,3 +11,4 @@ repository.workspace = true
 egui_wings.workspace = true
 geese.workspace = true
 wings_host.workspace = true
+wings.workspace = true

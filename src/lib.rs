@@ -178,6 +178,18 @@ impl CreateContextSnapshot {
         ctx.memory.data.insert_temp(Id::NULL, value.deltas);
         let last_style = LastStyle(ctx.memory.options.style.clone());
         ctx.memory.data.insert_temp(Id::NULL, last_style);
+
+        if new_frame {
+            let begin_frames = ctx.plugins.on_begin_frame.clone();
+            let end_frames = ctx.plugins.on_end_frame.clone();
+            drop(ctx);
+            for x in end_frames {
+                (x.callback)(exposed);
+            }
+            for x in begin_frames {
+                (x.callback)(exposed);
+            }
+        }
     }
     
     /// Updates the memory from the snapshot.

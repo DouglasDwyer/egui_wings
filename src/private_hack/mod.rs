@@ -201,6 +201,7 @@ enum FocusDirection {
     None,
 }
 
+#[derive(Clone)]
 pub struct NamedContextCallback {
     pub debug_name: &'static str,
     pub callback: ContextCallback,

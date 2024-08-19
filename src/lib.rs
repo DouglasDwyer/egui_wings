@@ -158,6 +158,16 @@ impl CreateContextSnapshot {
         if let Some(style) = value.style {
             ctx.memory.options.style = style;
         }
+
+        Self::apply_memory_snapshot(&mut ctx, value.memory);
+        Self::apply_options_snapshot(&mut ctx, &value.options);
+        ctx.new_zoom_factor = value.new_zoom_factor;
+        ctx.last_viewport = value.last_viewport;
+        Self::apply_viewport_snapshots(&mut ctx, value.viewports);
+        ctx.memory.data.insert_temp(Id::NULL, value.deltas);
+        let last_style = LastStyle(ctx.memory.options.style.clone());
+        ctx.memory.data.insert_temp(Id::NULL, last_style);
+
         if let Some(font_definitions) = value.font_definitions {
             let to_insert =
                 std::mem::replace(&mut ctx.memory.new_font_definitions, Some(font_definitions));
@@ -169,15 +179,6 @@ impl CreateContextSnapshot {
             Self::update_fonts_mut(&mut ctx);
             ctx.memory.new_font_definitions = to_insert;
         }
-
-        Self::apply_memory_snapshot(&mut ctx, value.memory);
-        Self::apply_options_snapshot(&mut ctx, &value.options);
-        ctx.new_zoom_factor = value.new_zoom_factor;
-        ctx.last_viewport = value.last_viewport;
-        Self::apply_viewport_snapshots(&mut ctx, value.viewports);
-        ctx.memory.data.insert_temp(Id::NULL, value.deltas);
-        let last_style = LastStyle(ctx.memory.options.style.clone());
-        ctx.memory.data.insert_temp(Id::NULL, last_style);
 
         if new_frame {
             let begin_frames = ctx.plugins.on_begin_frame.clone();

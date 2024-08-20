@@ -179,22 +179,11 @@ impl CreateContextSnapshot {
             Self::update_fonts_mut(&mut ctx);
             ctx.memory.new_font_definitions = to_insert;
         }
-
-        if new_frame {
-            let begin_frames = ctx.plugins.on_begin_frame.clone();
-            let end_frames = ctx.plugins.on_end_frame.clone();
-            drop(ctx);
-            for x in end_frames {
-                (x.callback)(exposed);
-            }
-            for x in begin_frames {
-                (x.callback)(exposed);
-            }
-        }
     }
     
     /// Updates the memory from the snapshot.
     fn apply_memory_snapshot(ctx: &mut private_hack::ContextImpl, snapshot: MemorySnapshot) {
+        ctx.memory.data.insert_temp(Id::new(ViewportId::ROOT), egui::text_selection::LabelSelectionState::from(snapshot.label_selection_state));
         ctx.memory.new_font_definitions = snapshot.new_font_definitions;
         ctx.memory.viewport_id = snapshot.viewport_id;
         ctx.memory.popup = snapshot.popup;

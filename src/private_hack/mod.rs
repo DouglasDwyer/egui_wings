@@ -99,6 +99,51 @@ pub struct Memory {
     pub focus: ViewportIdMap<Focus>,
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub struct WidgetTextCursor {
+    pub widget_id: Id,
+    pub ccursor: egui::text::CCursor,
+    pub pos: Pos2,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct CurrentSelection {
+    pub layer_id: LayerId,
+    pub primary: WidgetTextCursor,
+    pub secondary: WidgetTextCursor,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LabelSelectionState {
+    pub selection: Option<CurrentSelection>,
+    pub selection_bbox_last_frame: Rect,
+    pub selection_bbox_this_frame: Rect,
+    pub any_hovered: bool,
+    pub is_dragging: bool,
+    pub has_reached_primary: bool,
+    pub has_reached_secondary: bool,
+    pub text_to_copy: String,
+    pub last_copied_galley_rect: Option<Rect>,
+    pub painted_shape_idx: Vec<usize>,
+}
+
+impl LabelSelectionState {
+    /// Converts the `egui` object reference to a reference of this type.
+    pub fn from_label_selection_state(value: &egui::text_selection::LabelSelectionState) -> &Self {
+        unsafe {
+            transmute(value)
+        }
+    }
+}
+
+impl From<LabelSelectionState> for egui::text_selection::LabelSelectionState {
+    fn from(value: LabelSelectionState) -> Self {
+        unsafe {
+            transmute(value)
+        }
+    }
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Options {
     pub style: std::sync::Arc<Style>,

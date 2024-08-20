@@ -163,7 +163,7 @@ impl CreateContextSnapshot {
         Self::apply_options_snapshot(&mut ctx, &value.options);
         ctx.new_zoom_factor = value.new_zoom_factor;
         ctx.last_viewport = value.last_viewport;
-        Self::apply_viewport_snapshots(&mut ctx, value.viewports);
+        Self::apply_viewport_snapshots(&mut ctx, &value.deltas, value.viewports);
         ctx.memory.data.insert_temp(Id::NULL, value.deltas);
         let last_style = LastStyle(ctx.memory.options.style.clone());
         ctx.memory.data.insert_temp(Id::NULL, last_style);
@@ -220,7 +220,7 @@ impl CreateContextSnapshot {
     }
 
     /// Updates the list of viewports from the snapshot list.
-    fn apply_viewport_snapshots(ctx: &mut private_hack::ContextImpl, snapshots: ViewportIdMap<ViewportStateSnapshot>) {
+    fn apply_viewport_snapshots(ctx: &mut private_hack::ContextImpl, deltas: &ContextSnapshotDeltas, snapshots: ViewportIdMap<ViewportStateSnapshot>) {
         ctx.viewports.retain(|x, _| snapshots.contains_key(x));
         for (id, snapshot) in snapshots {
             let viewport = ctx
@@ -235,6 +235,7 @@ impl CreateContextSnapshot {
             viewport.used = snapshot.used;
             viewport.hits = snapshot.hits;
             viewport.interact_widgets = snapshot.interact_widgets;
+            viewport.repaint.frame_nr = deltas.frame_count;
             viewport.graphics = snapshot.graphics;
             viewport.output = snapshot.output;
             viewport.commands = snapshot.commands;

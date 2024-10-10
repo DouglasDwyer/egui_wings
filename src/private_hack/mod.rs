@@ -124,7 +124,16 @@ pub struct LabelSelectionState {
     pub has_reached_secondary: bool,
     pub text_to_copy: String,
     pub last_copied_galley_rect: Option<Rect>,
-    pub painted_shape_idx: Vec<usize>,
+    pub painted_selections: Vec<(ShapeIdx, Vec<RowVertexIndices>)>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub struct ShapeIdx(pub usize);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub struct RowVertexIndices {
+    pub row: usize,
+    pub vertex_indices: [u32; 6],
 }
 
 impl LabelSelectionState {
@@ -144,18 +153,41 @@ impl From<LabelSelectionState> for egui::text_selection::LabelSelectionState {
     }
 }
 
+/// Dark or Light theme.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum Theme {
+    Dark,
+    Light,
+}
+
+/// Options for input state handling.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct InputOptions {
+    pub max_click_dist: f32,
+    pub max_click_duration: f64,
+    pub max_double_click_delay: f64,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Options {
-    pub style: std::sync::Arc<Style>,
+
+    pub dark_style: std::sync::Arc<Style>,
+    pub light_style: std::sync::Arc<Style>,
+    pub theme_preference: ThemePreference,
+    pub fallback_theme: Theme,
+    system_theme: Option<Theme>,
+
     pub zoom_factor: f32,
     pub zoom_with_keyboard: bool,
     pub tessellation_options: epaint::TessellationOptions,
     pub repaint_on_widget_change: bool,
+    pub max_passes: core::num::NonZeroUsize,
     pub screen_reader: bool,
     pub preload_font_glyphs: bool,
     pub warn_on_id_clash: bool,
     pub line_scroll_speed: f32,
     pub scroll_zoom_speed: f32,
+    pub input_options: InputOptions,
     pub reduce_texture_memory: bool,
 }
 
@@ -163,6 +195,7 @@ pub struct Options {
 pub struct Style {
     pub override_text_style: Option<TextStyle>,
     pub override_font_id: Option<FontId>,
+    pub override_text_valign: Option<Align>,
     pub text_styles: std::collections::BTreeMap<TextStyle, FontId>,
     pub drag_value_text_style: TextStyle,
     #[serde(default = "default_number_formatter", skip)]
@@ -179,6 +212,7 @@ pub struct Style {
     pub explanation_tooltips: bool,
     pub url_in_tooltip: bool,
     pub always_scroll_the_only_direction: bool,
+    pub scroll_animation: ScrollAnimation,
 }
 
 fn default_number_formatter() -> NumberFormatter {
@@ -253,8 +287,8 @@ pub struct NamedContextCallback {
 }
 
 pub struct Plugins {
-    pub on_begin_frame: Vec<NamedContextCallback>,
-    pub on_end_frame: Vec<NamedContextCallback>,
+    pub on_begin_pass: Vec<NamedContextCallback>,
+    pub on_end_pass: Vec<NamedContextCallback>,
 }
 
 pub struct WrappedTextureManager(Arc<RwLock<epaint::TextureManager>>);
@@ -266,24 +300,25 @@ pub struct ViewportState {
     pub builder: ViewportBuilder,
     pub viewport_ui_cb: Option<Arc<DeferredViewportUiCallback>>,
     pub input: InputState,
-    pub this_frame: FrameState,
-    pub prev_frame: FrameState,
+    pub this_pass: PassState,
+    pub prev_pass: PassState,
     pub used: bool,
     pub repaint: ViewportRepaintInfo,
     pub hits: WidgetHits,
     pub interact_widgets: InteractionSnapshot,
     pub graphics: GraphicLayers,
     pub output: PlatformOutput,
-    pub commands: Vec<ViewportCommand>
+    pub commands: Vec<ViewportCommand>,
+    pub num_multipass_in_row: usize // Cross-frame statistics
 }
 
 pub struct ViewportRepaintInfo {
-    pub frame_nr: u64,
+    pub cumulative_pass_nr: u64,
     pub repaint_delay: Duration,
     pub outstanding: u8,
     pub causes: Vec<RepaintCause>,
     pub prev_causes: Vec<RepaintCause>,
-    pub prev_frame_paint_delay: Duration,
+    pub prev_pass_paint_delay: Duration,
 }
 
 #[derive(Clone)]
@@ -294,28 +329,53 @@ pub struct DebugRect {
     pub is_clicking: bool,
 }
 
+#[derive(Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ScrollTarget {
+    pub range: Rangef,
+    pub align: Option<Align>,
+    pub animation: ScrollAnimation,
+}
+
+impl ScrollTarget {
+    pub fn new(range: Rangef, align: Option<Align>, animation: ScrollAnimation) -> Self {
+        Self {
+            range,
+            align,
+            animation,
+        }
+    }
+}
+
 #[derive(Clone)]
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct FrameState {
+pub struct PassState {
     pub used_ids: IdMap<Rect>,
     pub widgets: crate::private_hack::widget_rect::WidgetRects,
     pub layers: ahash::HashMap<LayerId, PerLayerState>,
-    pub tooltips: TooltipFrameState,
+    pub tooltips: TooltipPassState,
     pub available_rect: Rect,
     pub unused_rect: Rect,
     pub used_by_panels: Rect,
-    pub scroll_target: [Option<(Rangef, Option<Align>)>; 2],
-    pub scroll_delta: Vec2,
+    pub scroll_target: [Option<ScrollTarget>; 2],
+    pub scroll_delta: (Vec2, ScrollAnimation),
     #[cfg(feature = "accesskit")]
     #[serde(skip)]
-    pub accesskit_state: Option<AccessKitFrameState>,
+    pub accesskit_state: Option<AccessKitPassState>,
     pub highlight_next_frame: IdSet,
     #[cfg(debug_assertions)]
     #[serde(skip)]
     pub debug_rect: Option<DebugRect>,
 }
 
-impl Default for FrameState {
+#[cfg(feature = "accesskit")]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+pub struct AccessKitPassState {
+    pub node_builders: IdMap<accesskit::NodeBuilder>,
+    pub parent_stack: Vec<Id>,
+}
+
+impl Default for PassState {
     fn default() -> Self {
         Self {
             used_ids: Default::default(),
@@ -326,7 +386,7 @@ impl Default for FrameState {
             unused_rect: Rect::NAN,
             used_by_panels: Rect::NAN,
             scroll_target: [None, None],
-            scroll_delta: Vec2::default(),
+            scroll_delta: (Vec2::default(), ScrollAnimation::none()),
             #[cfg(feature = "accesskit")]
             accesskit_state: None,
             highlight_next_frame: Default::default(),
@@ -415,11 +475,21 @@ pub struct PerLayerState {
     pub widget_with_tooltip: Option<Id>,
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ScrollAnimation {
     pub points_per_second: f32,
     pub duration: Rangef,
+}
+
+impl ScrollAnimation {
+
+    pub fn none() -> Self {
+        Self {
+            points_per_second: f32::INFINITY,
+            duration: Rangef::new(0.0, 0.0),
+        }
+    }
 }
 
 #[derive(Clone, Default)]
@@ -432,11 +502,11 @@ pub struct Sense {
 
 #[derive(Clone, Default)]
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct TooltipFrameState {
+pub struct TooltipPassState {
     pub widget_tooltips: IdMap<PerWidgetTooltipState>,
 }
 
-impl TooltipFrameState {
+impl TooltipPassState {
     pub fn clear(&mut self) {
         let Self { widget_tooltips } = self;
         widget_tooltips.clear();

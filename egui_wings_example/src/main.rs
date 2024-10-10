@@ -80,8 +80,9 @@ fn create_geese_context() -> GeeseContext {
 async fn run() {
     let event_loop = EventLoop::new().unwrap();
 
-    let builder = winit::window::WindowBuilder::new();
-    let window = builder.build(&event_loop).unwrap();
+    let window_attributes = winit::window::Window::default_attributes().with_title("A fantastic window!");
+    let window = event_loop.create_window(window_attributes).unwrap();
+
     let window = Arc::new(window);
     let initial_width = 1360;
     let initial_height = 768;
@@ -107,6 +108,7 @@ async fn run() {
                 label: None,
                 required_features: features,
                 required_limits: Default::default(),
+                memory_hints: wgpu::MemoryHints::Performance
             },
             None,
         )
@@ -182,9 +184,7 @@ async fn run() {
                     WindowEvent::CursorLeft { .. } => {}
                     WindowEvent::MouseWheel { .. } => {}
                     WindowEvent::MouseInput { .. } => {}
-                    WindowEvent::TouchpadMagnify { .. } => {}
-                    WindowEvent::SmartMagnify { .. } => {}
-                    WindowEvent::TouchpadRotate { .. } => {}
+
                     WindowEvent::TouchpadPressure { .. } => {}
                     WindowEvent::AxisMotion { .. } => {}
                     WindowEvent::Touch(_) => {}
@@ -227,6 +227,7 @@ async fn run() {
                         surface_texture.present();
                         window.request_redraw();
                     }
+                    _=>{}
                 }
             }
 
@@ -271,12 +272,14 @@ impl EguiRenderer {
             &window,
             Some(window.scale_factor() as f32),
             None,
+            None
         );
         let egui_renderer = Renderer::new(
             device,
             output_color_format,
             output_depth_format,
             msaa_samples,
+            true
         );
 
         EguiRenderer {
@@ -340,7 +343,7 @@ impl EguiRenderer {
             label: Some("egui main render pass"),
             occlusion_query_set: None,
         });
-        self.renderer.render(&mut rpass, &tris, &screen_descriptor);
+        self.renderer.render(&mut rpass.forget_lifetime(), &tris, &screen_descriptor);
         drop(rpass);
         for x in &full_output.textures_delta.free {
             self.renderer.free_texture(x)

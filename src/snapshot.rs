@@ -251,6 +251,8 @@ pub(super) struct ViewportStateSnapshot {
     pub output: PlatformOutput,
     /// The `ViewportState::commands` field.
     pub commands: Vec<ViewportCommand>,
+/// The `ViewportState::num_multipass_in_row` field.
+    pub num_multipass_in_row: usize,
 }
 
 impl ViewportStateSnapshot {
@@ -870,6 +872,10 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportStateSn
         let commands = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(10, &self))?;
+        let num_multipass_in_row = seq
+        .next_element()?
+        .ok_or_else(|| serde::de::Error::invalid_length(11, &self))?;
+        
 
         Ok(SnapshotDeserialize(ViewportStateSnapshot {
             class,
@@ -883,6 +889,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportStateSn
             graphics,
             output,
             commands,
+            num_multipass_in_row
         }))
     }
 }

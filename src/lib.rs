@@ -255,6 +255,7 @@ impl CreateContextSnapshot {
             viewport.graphics = snapshot.graphics;
             viewport.output = snapshot.output;
             viewport.commands = snapshot.commands;
+            viewport.num_multipass_in_row = snapshot.num_multipass_in_row;
         }
         
         Self::reinitialize_galleys(ctx)

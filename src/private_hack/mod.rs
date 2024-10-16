@@ -175,7 +175,7 @@ pub struct Options {
     pub light_style: std::sync::Arc<Style>,
     pub theme_preference: ThemePreference,
     pub fallback_theme: Theme,
-    system_theme: Option<Theme>,
+    pub system_theme: Option<Theme>,
 
     pub zoom_factor: f32,
     pub zoom_with_keyboard: bool,
@@ -362,7 +362,7 @@ pub struct PassState {
     #[cfg(feature = "accesskit")]
     #[serde(skip)]
     pub accesskit_state: Option<AccessKitPassState>,
-    pub highlight_next_frame: IdSet,
+    pub highlight_next_pass: IdSet,
     #[cfg(debug_assertions)]
     #[serde(skip)]
     pub debug_rect: Option<DebugRect>,
@@ -389,7 +389,7 @@ impl Default for PassState {
             scroll_delta: (Vec2::default(), ScrollAnimation::none()),
             #[cfg(feature = "accesskit")]
             accesskit_state: None,
-            highlight_next_frame: Default::default(),
+            highlight_next_pass: Default::default(),
 
             #[cfg(debug_assertions)]
             debug_rect: None,

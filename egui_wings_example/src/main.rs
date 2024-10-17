@@ -1,12 +1,12 @@
-use egui_wgpu::*;
+use ::winit;
 use egui_wgpu::wgpu::*;
+use egui_wgpu::*;
 use egui_wings::*;
 use egui_wings_host::*;
 use example_host::*;
 use geese::*;
 use std::sync::*;
 use wings_host::*;
-use ::winit;
 use winit::dpi::*;
 use winit::event::*;
 use winit::event_loop::*;
@@ -30,11 +30,9 @@ impl EguiExample {
 }
 
 impl GeeseSystem for EguiExample {
-    const DEPENDENCIES: Dependencies = dependencies()
-        .with::<WingsHost<ExampleHostSystems>>();
+    const DEPENDENCIES: Dependencies = dependencies().with::<WingsHost<ExampleHostSystems>>();
 
-    const EVENT_HANDLERS: EventHandlers<Self> = event_handlers()
-        .with(Self::on_error);
+    const EVENT_HANDLERS: EventHandlers<Self> = event_handlers().with(Self::on_error);
 
     fn new(_: GeeseContextHandle<Self>) -> Self {
         Self
@@ -46,12 +44,9 @@ pub struct ExampleHostSystems;
 
 impl Host for ExampleHostSystems {
     // Declare the egui system that should be exported to WASM.
-    const SYSTEMS: Systems<Self> = systems()
-        .with::<EguiHost>(traits()
-            .with::<dyn Egui>());
+    const SYSTEMS: Systems<Self> = systems().with::<EguiHost>(traits().with::<dyn Egui>());
 
-    const EVENTS: Events<Self> = events()
-        .with::<example_host::on::Render>();
+    const EVENTS: Events<Self> = events().with::<example_host::on::Render>();
 
     type Engine = wasmtime_runtime_layer::Engine;
 
@@ -63,13 +58,14 @@ impl Host for ExampleHostSystems {
 /// Creates the `GeeseContext` that will hold the host plugin systems.
 fn create_geese_context() -> GeeseContext {
     let mut ctx = GeeseContext::default();
-    ctx.flush()
-        .with(geese::notify::add_system::<EguiExample>());
+    ctx.flush().with(geese::notify::add_system::<EguiExample>());
 
     let mut host = ctx.get_mut::<WingsHost<ExampleHostSystems>>();
-    
+
     let mut image = WingsImage::default();
-    let plugin = host.load(EXAMPLE_PLUGIN_WASM).expect("Failed to load plugin.");
+    let plugin = host
+        .load(EXAMPLE_PLUGIN_WASM)
+        .expect("Failed to load plugin.");
     image.add::<ExampleHost>(&plugin);
     host.instantiate(&image);
     drop(host);
@@ -80,7 +76,8 @@ fn create_geese_context() -> GeeseContext {
 async fn run() {
     let event_loop = EventLoop::new().unwrap();
 
-    let window_attributes = winit::window::Window::default_attributes().with_title("A fantastic window!");
+    let window_attributes =
+        winit::window::Window::default_attributes().with_title("A fantastic window!");
     let window = event_loop.create_window(window_attributes).unwrap();
 
     let window = Arc::new(window);
@@ -108,7 +105,7 @@ async fn run() {
                 label: None,
                 required_features: features,
                 required_limits: Default::default(),
-                memory_hints: wgpu::MemoryHints::Performance
+                memory_hints: wgpu::MemoryHints::Performance,
             },
             None,
         )
@@ -139,12 +136,13 @@ async fn run() {
     let mut egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
     let mut close_requested = false;
-    
+
     let scale_factor = 1.0;
 
     let mut ctx = create_geese_context();
     // Set the context that will be exposed to WASM plugins
-    ctx.get_mut::<EguiHost>().set_context(egui_renderer.context().clone());
+    ctx.get_mut::<EguiHost>()
+        .set_context(egui_renderer.context().clone());
 
     let _ = event_loop.run(move |event, elwt| {
         elwt.set_control_flow(ControlFlow::Poll);
@@ -200,10 +198,8 @@ async fn run() {
                             .texture
                             .create_view(&TextureViewDescriptor::default());
 
-                        let mut encoder =
-                            device.create_command_encoder(&CommandEncoderDescriptor {
-                                label: None,
-                            });
+                        let mut encoder = device
+                            .create_command_encoder(&CommandEncoderDescriptor { label: None });
 
                         let screen_descriptor = ScreenDescriptor {
                             size_in_pixels: [config.width, config.height],
@@ -218,8 +214,7 @@ async fn run() {
                             &surface_view,
                             screen_descriptor,
                             |_| {
-                                ctx.flush()
-                                    .with(example_host::on::Render);
+                                ctx.flush().with(example_host::on::Render);
                             },
                         );
 
@@ -227,7 +222,7 @@ async fn run() {
                         surface_texture.present();
                         window.request_redraw();
                     }
-                    _=>{}
+                    _ => {}
                 }
             }
 
@@ -272,14 +267,14 @@ impl EguiRenderer {
             &window,
             Some(window.scale_factor() as f32),
             None,
-            None
+            None,
         );
         let egui_renderer = Renderer::new(
             device,
             output_color_format,
             output_depth_format,
             msaa_samples,
-            true
+            true,
         );
 
         EguiRenderer {
@@ -304,7 +299,7 @@ impl EguiRenderer {
         window: &winit::window::Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&egui::Context),
+        mut run_ui: impl FnMut(&egui::Context),
     ) {
         self.state
             .egui_ctx()
@@ -322,29 +317,32 @@ impl EguiRenderer {
             .state
             .egui_ctx()
             .tessellate(full_output.shapes, self.state.egui_ctx().pixels_per_point());
-        
+
         for (id, image_delta) in &full_output.textures_delta.set {
             self.renderer
                 .update_texture(device, queue, *id, image_delta);
         }
         self.renderer
             .update_buffers(device, queue, encoder, &tris, &screen_descriptor);
-        let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: window_surface_view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            label: Some("egui main render pass"),
-            occlusion_query_set: None,
-        });
-        self.renderer.render(&mut rpass.forget_lifetime(), &tris, &screen_descriptor);
-        drop(rpass);
+        {
+            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: window_surface_view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Load,
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                label: Some("egui main render pass"),
+                occlusion_query_set: None,
+            });
+            self.renderer
+                .render(&mut rpass.forget_lifetime(), &tris, &screen_descriptor);
+        }
+        //drop(rpass);
         for x in &full_output.textures_delta.free {
             self.renderer.free_texture(x)
         }

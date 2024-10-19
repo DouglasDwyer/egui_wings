@@ -3,7 +3,7 @@ use egui::emath::TSTransform;
 use egui::epaint::text::FontDefinitions;
 use serde::ser::{SerializeMap, SerializeSeq, SerializeTuple};
 
-use egui::{AreaState, PlatformOutput, ThemePreference, ViewportCommand};
+use egui::{AreaState, PlatformOutput, ViewportCommand};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -41,13 +41,7 @@ impl ContextSnapshotDeltas {
         let frame_count = ctx.viewports.get(&ctx.last_viewport).map(|x| x.repaint.cumulative_pass_nr).unwrap_or(0);
         previous_deltas.frame_count = frame_count;
 
-        let oldstyle = match ctx.memory.options.theme_preference {
-            ThemePreference::Dark => &ctx.memory.options.dark_style,
-            ThemePreference::Light => &ctx.memory.options.light_style,
-            _=> { &ctx.memory.options.light_style } // TODO
-        };
-
-        let new_style = oldstyle.clone(); //ctx.memory.options.style.clone();
+        let new_style = ctx.memory.options.style().clone();
         if ctx.memory.data.get_temp::<LastStyle>(Id::NULL).map(|x| !Arc::ptr_eq(&x.0, &new_style)).unwrap_or_default() {
             previous_deltas.style_count += 1;
             ctx.memory.data.insert_temp(Id::NULL, LastStyle(new_style));
@@ -145,17 +139,12 @@ impl MemorySnapshot {
 
 /// Holds the instantaneous state of an `Options` for synchronizing
 /// between two separate contexts.
-#[allow(dead_code)]
-#[derive(Clone, serde::Deserialize)]
+#[derive(Clone, Copy, serde::Deserialize)]
 pub struct OptionsSnapshot {
-
-    pub dark_style: std::sync::Arc<Style>,
-    pub light_style: std::sync::Arc<Style>,
+    /// The `Options::theme_preference` field.
     pub theme_preference: ThemePreference,
-
+    /// The `Options::fallback_theme` field.
     pub fallback_theme: Theme,
-    pub system_theme: Option<Theme>,
-
     /// The `Options::everything_is_visible` field.
     pub zoom_factor: f32,
     /// The `Options::zoom_with_keyboard` field.
@@ -164,8 +153,8 @@ pub struct OptionsSnapshot {
     pub tessellation_options: epaint::TessellationOptions,
     /// The `Options::repaint_on_widget_change` field.
     pub repaint_on_widget_change: bool,
-
-    pub max_passes: core::num::NonZeroUsize,
+    /// The `Options::max_passes` field.
+    pub max_passes: std::num::NonZeroUsize,
     /// The `Options::screen_reader` field.
     pub screen_reader: bool,
     /// The `Options::preload_font_glyphs` field.
@@ -176,16 +165,15 @@ pub struct OptionsSnapshot {
     pub line_scroll_speed: f32,
     /// The `Options::scroll_zoom_speed` field.
     pub scroll_zoom_speed: f32,
-
+        /// The `Options::input_options` field.
     pub input_options: InputOptions,
-
     /// The `Options::reduce_texture_memory` field.
     pub reduce_texture_memory: bool,
 }
 
 impl OptionsSnapshot {
     /// The number of fields that this struct has.
-    const FIELDS: usize = 17;
+    const FIELDS: usize = 13;
 }
 
 /// A serialized version of `epaint::text::TextWrapping`
@@ -251,13 +239,13 @@ pub(super) struct ViewportStateSnapshot {
     pub output: PlatformOutput,
     /// The `ViewportState::commands` field.
     pub commands: Vec<ViewportCommand>,
-/// The `ViewportState::num_multipass_in_row` field.
+    /// The `ViewportState::num_multipass_in_row` field.
     pub num_multipass_in_row: usize,
 }
 
 impl ViewportStateSnapshot {
     /// The number of fields that this struct has.
-    const FIELDS: usize = 11 - 1;
+    const FIELDS: usize = 12 - 1;
 }
 
 impl<'a> serde::Serialize for ContextShapshotBorrow<'a> {
@@ -297,14 +285,8 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, Memory> {
 impl<'a> serde::Serialize for SnapshotSerialize<'a, Options> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut serialize_tuple = serializer.serialize_tuple(OptionsSnapshot::FIELDS)?;
-
-        serialize_tuple.serialize_element(&self.0.dark_style)?;
-        serialize_tuple.serialize_element(&self.0.light_style)?;
-
         serialize_tuple.serialize_element(&self.0.theme_preference)?;
         serialize_tuple.serialize_element(&self.0.fallback_theme)?;
-        //serialize_tuple.serialize_element(&self.0.system_theme)?;
-
         serialize_tuple.serialize_element(&self.0.zoom_factor)?;
         serialize_tuple.serialize_element(&self.0.zoom_with_keyboard)?;
         serialize_tuple.serialize_element(&self.0.tessellation_options)?;
@@ -380,6 +362,7 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, ViewportState> {
         serialize_tuple.serialize_element(&SnapshotSerialize(&self.0.graphics))?;
         serialize_tuple.serialize_element(&self.0.output)?;
         serialize_tuple.serialize_element(&self.0.commands)?;
+        serialize_tuple.serialize_element(&self.0.num_multipass_in_row)?;
         serialize_tuple.end()
     }
 }
@@ -875,7 +858,6 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportStateSn
         let num_multipass_in_row = seq
         .next_element()?
         .ok_or_else(|| serde::de::Error::invalid_length(11, &self))?;
-        
 
         Ok(SnapshotDeserialize(ViewportStateSnapshot {
             class,

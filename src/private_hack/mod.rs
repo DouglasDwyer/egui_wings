@@ -127,14 +127,14 @@ pub struct LabelSelectionState {
     pub painted_selections: Vec<(ShapeIdx, Vec<RowVertexIndices>)>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub struct ShapeIdx(pub usize);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RowVertexIndices {
     pub row: usize,
     pub vertex_indices: [u32; 6],
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShapeIdx(pub usize);
 
 impl LabelSelectionState {
     /// Converts the `egui` object reference to a reference of this type.
@@ -153,35 +153,21 @@ impl From<LabelSelectionState> for egui::text_selection::LabelSelectionState {
     }
 }
 
-/// Dark or Light theme.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum Theme {
-    Dark,
-    Light,
-}
-
-/// Options for input state handling.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct InputOptions {
-    pub max_click_dist: f32,
-    pub max_click_duration: f64,
-    pub max_double_click_delay: f64,
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Options {
-
+    #[serde(skip)]
     pub dark_style: std::sync::Arc<Style>,
+    #[serde(skip)]
     pub light_style: std::sync::Arc<Style>,
     pub theme_preference: ThemePreference,
     pub fallback_theme: Theme,
+    #[serde(skip)]
     pub system_theme: Option<Theme>,
-
     pub zoom_factor: f32,
     pub zoom_with_keyboard: bool,
     pub tessellation_options: epaint::TessellationOptions,
     pub repaint_on_widget_change: bool,
-    pub max_passes: core::num::NonZeroUsize,
+    pub max_passes: std::num::NonZeroUsize,
     pub screen_reader: bool,
     pub preload_font_glyphs: bool,
     pub warn_on_id_clash: bool,
@@ -191,11 +177,163 @@ pub struct Options {
     pub reduce_texture_memory: bool,
 }
 
+impl Default for Options {
+    fn default() -> Self {
+        let is_web = cfg!(target_arch = "wasm32");
+        let line_scroll_speed = if is_web {
+            8.0
+        } else {
+            40.0
+        };
+
+        Self {
+            dark_style: std::sync::Arc::new(Theme::Dark.default_style()),
+            light_style: std::sync::Arc::new(Theme::Light.default_style()),
+            theme_preference: ThemePreference::System,
+            fallback_theme: Theme::Dark,
+            system_theme: None,
+            zoom_factor: 1.0,
+            zoom_with_keyboard: true,
+            tessellation_options: Default::default(),
+            repaint_on_widget_change: false,
+            screen_reader: false,
+            preload_font_glyphs: true,
+            warn_on_id_clash: cfg!(debug_assertions),
+            line_scroll_speed,
+            scroll_zoom_speed: 1.0 / 200.0,
+            input_options: Default::default(),
+            reduce_texture_memory: false,
+            max_passes: std::num::NonZeroUsize::new(2).unwrap(),
+        }
+    }
+}
+
+impl Options {
+
+    pub fn style_mut(&mut self) -> &mut std::sync::Arc<Style> {
+        match self.theme() {
+            Theme::Dark => &mut self.dark_style,
+            Theme::Light => &mut self.light_style,
+        }
+    }
+
+    pub fn theme(&self) -> Theme {
+        match self.theme_preference {
+            ThemePreference::Dark => Theme::Dark,
+            ThemePreference::Light => Theme::Light,
+            ThemePreference::System => self.system_theme.unwrap_or(self.fallback_theme),
+        }
+    }
+
+    pub fn style(&self) -> &std::sync::Arc<Style> {
+        match self.theme() {
+            Theme::Dark => &self.dark_style,
+            Theme::Light => &self.light_style,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub enum Theme {
+    Dark,
+    Light,
+}
+
+impl Theme {
+    pub fn default_visuals(self) -> crate::Visuals {
+        match self {
+            Self::Dark => crate::Visuals::dark(),
+            Self::Light => crate::Visuals::light(),
+        }
+    }
+
+    pub fn default_style(self) -> Style {
+        Style {
+            visuals: self.default_visuals(),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct NumberFormatter(
+    pub Arc<dyn 'static + Sync + Send + Fn(f64, crate::RangeInclusive<usize>) -> String>,
+);
+
+impl NumberFormatter {
+    /// The first argument is the number to be formatted.
+    /// The second argument is the range of the number of decimals to show.
+    ///
+    /// See [`Self::format`] for the meaning of the `decimals` argument.
+    #[inline]
+    pub fn new(
+        formatter: impl 'static + Sync + Send + Fn(f64, crate::RangeInclusive<usize>) -> String,
+    ) -> Self {
+        Self(Arc::new(formatter))
+    }
+
+    #[inline]
+    pub fn format(&self, value: f64, decimals: crate::RangeInclusive<usize>) -> String {
+        (self.0)(value, decimals)
+    }
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        #[allow(deprecated)]
+        Self {
+            override_font_id: None,
+            override_text_style: None,
+            text_styles: default_text_styles(),
+            drag_value_text_style: TextStyle::Button,
+            number_formatter: NumberFormatter(Arc::new(emath::format_with_decimals_in_range)),
+            wrap: None,
+            wrap_mode: None,
+            spacing: Spacing::default(),
+            interaction: Interaction::default(),
+            visuals: Visuals::default(),
+            animation_time: 1.0 / 12.0,
+            #[cfg(debug_assertions)]
+            debug: Default::default(),
+            explanation_tooltips: false,
+            url_in_tooltip: false,
+            always_scroll_the_only_direction: false,
+            scroll_animation: ScrollAnimation::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub enum ThemePreference {
+    Dark,
+    Light,
+    System,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct InputOptions {
+    pub max_click_dist: f32,
+    pub max_click_duration: f64,
+    pub max_double_click_delay: f64,
+}
+
+impl Default for InputOptions {
+    fn default() -> Self {
+        Self {
+            max_click_dist: 6.0,
+            max_click_duration: 0.8,
+            max_double_click_delay: 0.3,
+        }
+    }
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Style {
     pub override_text_style: Option<TextStyle>,
     pub override_font_id: Option<FontId>,
-    pub override_text_valign: Option<Align>,
     pub text_styles: std::collections::BTreeMap<TextStyle, FontId>,
     pub drag_value_text_style: TextStyle,
     #[serde(default = "default_number_formatter", skip)]
@@ -309,7 +447,7 @@ pub struct ViewportState {
     pub graphics: GraphicLayers,
     pub output: PlatformOutput,
     pub commands: Vec<ViewportCommand>,
-    pub num_multipass_in_row: usize // Cross-frame statistics
+    pub num_multipass_in_row: usize,
 }
 
 pub struct ViewportRepaintInfo {
@@ -329,24 +467,6 @@ pub struct DebugRect {
     pub is_clicking: bool,
 }
 
-#[derive(Clone, Debug)]
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct ScrollTarget {
-    pub range: Rangef,
-    pub align: Option<Align>,
-    pub animation: ScrollAnimation,
-}
-
-impl ScrollTarget {
-    pub fn new(range: Rangef, align: Option<Align>, animation: ScrollAnimation) -> Self {
-        Self {
-            range,
-            align,
-            animation,
-        }
-    }
-}
-
 #[derive(Clone)]
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct PassState {
@@ -358,7 +478,7 @@ pub struct PassState {
     pub unused_rect: Rect,
     pub used_by_panels: Rect,
     pub scroll_target: [Option<ScrollTarget>; 2],
-    pub scroll_delta: (Vec2, ScrollAnimation),
+    pub scroll_delta: (Vec2, style::ScrollAnimation),
     #[cfg(feature = "accesskit")]
     #[serde(skip)]
     pub accesskit_state: Option<AccessKitPassState>,
@@ -366,13 +486,6 @@ pub struct PassState {
     #[cfg(debug_assertions)]
     #[serde(skip)]
     pub debug_rect: Option<DebugRect>,
-}
-
-#[cfg(feature = "accesskit")]
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
-pub struct AccessKitPassState {
-    pub node_builders: IdMap<accesskit::NodeBuilder>,
-    pub parent_stack: Vec<Id>,
 }
 
 impl Default for PassState {
@@ -386,7 +499,7 @@ impl Default for PassState {
             unused_rect: Rect::NAN,
             used_by_panels: Rect::NAN,
             scroll_target: [None, None],
-            scroll_delta: (Vec2::default(), ScrollAnimation::none()),
+            scroll_delta: (Vec2::default(), style::ScrollAnimation::none()),
             #[cfg(feature = "accesskit")]
             accesskit_state: None,
             highlight_next_pass: Default::default(),
@@ -475,22 +588,6 @@ pub struct PerLayerState {
     pub widget_with_tooltip: Option<Id>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct ScrollAnimation {
-    pub points_per_second: f32,
-    pub duration: Rangef,
-}
-
-impl ScrollAnimation {
-
-    pub fn none() -> Self {
-        Self {
-            points_per_second: f32::INFINITY,
-            duration: Rangef::new(0.0, 0.0),
-        }
-    }
-}
 
 #[derive(Clone, Default)]
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -518,4 +615,12 @@ impl TooltipPassState {
 pub struct PerWidgetTooltipState {
     pub bounding_rect: Rect,
     pub tooltip_count: usize,
+}
+
+#[derive(Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ScrollTarget {
+    pub range: Rangef,
+    pub align: Option<Align>,
+    pub animation: style::ScrollAnimation,
 }

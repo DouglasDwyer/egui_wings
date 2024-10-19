@@ -152,19 +152,18 @@ impl CreateContextSnapshot {
         let Self::Created(value) = self else { panic!("Snapshot was not `Created` variant.") };
         let exposed = private_hack::Context::from_context(context);
         let mut ctx = exposed.0.write();
-
+        
         let frame_nr = ctx.viewports.get(&ctx.last_viewport).map(|x| x.repaint.cumulative_pass_nr).unwrap_or(u64::MAX);
         let new_frame = frame_nr != value.deltas.frame_count;
-
-
-        
         if let Some(style) = value.style {
 
-            //ctx.memory.options.style = style;
-            match ctx.memory.options.theme_preference {
-                ThemePreference::Dark => { ctx.memory.options.dark_style = style; }
-                ThemePreference::Light => { ctx.memory.options.light_style = style; }
-                _=> {} // TODO
+            match ctx.memory.options.theme() {
+                private_hack::Theme::Dark => {
+                    ctx.memory.options.dark_style = style;
+                },
+                private_hack::Theme::Light => {
+                    ctx.memory.options.light_style = style;
+                },
             }
         }
 
@@ -174,15 +173,7 @@ impl CreateContextSnapshot {
         ctx.last_viewport = value.last_viewport;
         Self::apply_viewport_snapshots(&mut ctx, &value.deltas, value.viewports);
         ctx.memory.data.insert_temp(Id::NULL, value.deltas);
-
-        let oldstyle = match ctx.memory.options.theme_preference {
-            ThemePreference::Dark => &ctx.memory.options.dark_style,
-            ThemePreference::Light => &ctx.memory.options.light_style,
-            _=> {&ctx.memory.options.light_style} // TODO
-        };
-
-        let last_style = LastStyle(oldstyle.clone()); // LastStyle(ctx.memory.options.style.clone());
-
+        let last_style = LastStyle(ctx.memory.options.style().clone());
         ctx.memory.data.insert_temp(Id::NULL, last_style);
 
         if let Some(font_definitions) = value.font_definitions {
@@ -213,14 +204,8 @@ impl CreateContextSnapshot {
 
     /// Updates the options from the snapshot.
     fn apply_options_snapshot(ctx: &mut private_hack::ContextImpl, snapshot: &OptionsSnapshot) {
-
-        ctx.memory.options.dark_style = snapshot.dark_style.clone();
-        ctx.memory.options.light_style = snapshot.light_style.clone();
         ctx.memory.options.theme_preference = snapshot.theme_preference;
-
         ctx.memory.options.fallback_theme = snapshot.fallback_theme;
-        //ctx.memory.options.system_theme = snapshot.system_theme;
-
         ctx.memory.options.zoom_factor = snapshot.zoom_factor;
         ctx.memory.options.zoom_with_keyboard = snapshot.zoom_with_keyboard;
         ctx.memory.options.tessellation_options = snapshot.tessellation_options;
@@ -326,14 +311,7 @@ impl CreateContextSnapshot {
             if is_new && ctx.memory.options.preload_font_glyphs {
                 // Preload the most common characters for the most common fonts.
                 // This is not very important to do, but may save a few GPU operations.
-
-                let style = match ctx.memory.options.theme_preference {
-                    ThemePreference::Dark => &ctx.memory.options.dark_style,
-                    ThemePreference::Light => &ctx.memory.options.light_style,
-                    _=> {&ctx.memory.options.light_style} // TODO
-                };
-
-                for font_id in style.text_styles.values() { //ctx.memory.options.style.text_styles.values()
+                for font_id in ctx.memory.options.style().text_styles.values() {
                     fonts.lock().fonts.font(font_id).preload_common_characters();
                 }
             }
@@ -350,18 +328,7 @@ impl Serialize for CreateContextSnapshot {
                 let ctx = exposed.0.read();
 
                 let style = (deltas.style_count != current_deltas.style_count)
-                    .then(|| {
-
-                        match ctx.memory.options.theme_preference {
-                            ThemePreference::Dark => &ctx.memory.options.dark_style,
-                            ThemePreference::Light => &ctx.memory.options.light_style,
-                            _=> {
-                                &ctx.memory.options.light_style
-                            } // TODO
-                        }
-
-                        //ctx.memory.options.style.clone()
-                    });
+                    .then(|| ctx.memory.options.style().clone());
     
                 let font_definitions = (deltas.font_definitions_count
                     != current_deltas.font_definitions_count)
@@ -371,7 +338,7 @@ impl Serialize for CreateContextSnapshot {
                     deltas: &current_deltas,
                     font_definitions,
                     memory: &ctx.memory,
-                    style: style.cloned(),
+                    style,
                     new_zoom_factor: &ctx.new_zoom_factor,
                     last_viewport: &ctx.last_viewport,
                     viewports: &ctx.viewports,

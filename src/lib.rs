@@ -89,7 +89,7 @@ impl dyn Egui {
         let mut initialized = false;
         let context = CONTEXT.get_or_init(|| {
             let result = Context::default();
-            result.begin_frame(RawInput::default());
+            result.begin_pass(RawInput::default());
             initialized = true;
             result
         });
@@ -153,10 +153,18 @@ impl CreateContextSnapshot {
         let exposed = private_hack::Context::from_context(context);
         let mut ctx = exposed.0.write();
         
-        let frame_nr = ctx.viewports.get(&ctx.last_viewport).map(|x| x.repaint.frame_nr).unwrap_or(u64::MAX);
+        let frame_nr = ctx.viewports.get(&ctx.last_viewport).map(|x| x.repaint.cumulative_pass_nr).unwrap_or(u64::MAX);
         let new_frame = frame_nr != value.deltas.frame_count;
         if let Some(style) = value.style {
-            ctx.memory.options.style = style;
+
+            match ctx.memory.options.theme() {
+                private_hack::Theme::Dark => {
+                    ctx.memory.options.dark_style = style;
+                },
+                private_hack::Theme::Light => {
+                    ctx.memory.options.light_style = style;
+                },
+            }
         }
 
         Self::apply_memory_snapshot(&mut ctx, value.memory);
@@ -165,7 +173,7 @@ impl CreateContextSnapshot {
         ctx.last_viewport = value.last_viewport;
         Self::apply_viewport_snapshots(&mut ctx, &value.deltas, value.viewports);
         ctx.memory.data.insert_temp(Id::NULL, value.deltas);
-        let last_style = LastStyle(ctx.memory.options.style.clone());
+        let last_style = LastStyle(ctx.memory.options.style().clone());
         ctx.memory.data.insert_temp(Id::NULL, last_style);
 
         if let Some(font_definitions) = value.font_definitions {
@@ -196,15 +204,19 @@ impl CreateContextSnapshot {
 
     /// Updates the options from the snapshot.
     fn apply_options_snapshot(ctx: &mut private_hack::ContextImpl, snapshot: &OptionsSnapshot) {
+        ctx.memory.options.theme_preference = snapshot.theme_preference;
+        ctx.memory.options.fallback_theme = snapshot.fallback_theme;
         ctx.memory.options.zoom_factor = snapshot.zoom_factor;
         ctx.memory.options.zoom_with_keyboard = snapshot.zoom_with_keyboard;
         ctx.memory.options.tessellation_options = snapshot.tessellation_options;
         ctx.memory.options.repaint_on_widget_change = snapshot.repaint_on_widget_change;
+        ctx.memory.options.max_passes = snapshot.max_passes;
         ctx.memory.options.screen_reader = snapshot.screen_reader;
         ctx.memory.options.preload_font_glyphs = snapshot.preload_font_glyphs;
         ctx.memory.options.warn_on_id_clash = snapshot.warn_on_id_clash;
         ctx.memory.options.line_scroll_speed = snapshot.line_scroll_speed;
         ctx.memory.options.scroll_zoom_speed = snapshot.scroll_zoom_speed;
+        ctx.memory.options.input_options = snapshot.input_options;
         ctx.memory.options.reduce_texture_memory = snapshot.reduce_texture_memory;
     }
 
@@ -219,15 +231,16 @@ impl CreateContextSnapshot {
             viewport.class = snapshot.class;
             viewport.builder = snapshot.builder;
             viewport.input = snapshot.input;
-            viewport.this_frame = snapshot.this_frame;
-            viewport.prev_frame = snapshot.prev_frame;
+            viewport.this_pass = snapshot.this_pass;
+            viewport.prev_pass = snapshot.prev_pass;
             viewport.used = snapshot.used;
             viewport.hits = snapshot.hits;
             viewport.interact_widgets = snapshot.interact_widgets;
-            viewport.repaint.frame_nr = deltas.frame_count;
+            viewport.repaint.cumulative_pass_nr = deltas.frame_count;
             viewport.graphics = snapshot.graphics;
             viewport.output = snapshot.output;
             viewport.commands = snapshot.commands;
+            viewport.num_multipass_in_row = snapshot.num_multipass_in_row;
         }
         
         Self::reinitialize_galleys(ctx)
@@ -292,13 +305,13 @@ impl CreateContextSnapshot {
                 });
     
             {
-                fonts.begin_frame(pixels_per_point, max_texture_side);
+                fonts.begin_pass(pixels_per_point, max_texture_side);
             }
     
             if is_new && ctx.memory.options.preload_font_glyphs {
                 // Preload the most common characters for the most common fonts.
                 // This is not very important to do, but may save a few GPU operations.
-                for font_id in ctx.memory.options.style.text_styles.values() {
+                for font_id in ctx.memory.options.style().text_styles.values() {
                     fonts.lock().fonts.font(font_id).preload_common_characters();
                 }
             }
@@ -315,7 +328,7 @@ impl Serialize for CreateContextSnapshot {
                 let ctx = exposed.0.read();
 
                 let style = (deltas.style_count != current_deltas.style_count)
-                    .then(|| ctx.memory.options.style.clone());
+                    .then(|| ctx.memory.options.style().clone());
     
                 let font_definitions = (deltas.font_definitions_count
                     != current_deltas.font_definitions_count)

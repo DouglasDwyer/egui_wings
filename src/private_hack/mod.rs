@@ -177,37 +177,6 @@ pub struct Options {
     pub reduce_texture_memory: bool,
 }
 
-impl Default for Options {
-    fn default() -> Self {
-        let is_web = cfg!(target_arch = "wasm32");
-        let line_scroll_speed = if is_web {
-            8.0
-        } else {
-            40.0
-        };
-
-        Self {
-            dark_style: std::sync::Arc::new(Theme::Dark.default_style()),
-            light_style: std::sync::Arc::new(Theme::Light.default_style()),
-            theme_preference: ThemePreference::System,
-            fallback_theme: Theme::Dark,
-            system_theme: None,
-            zoom_factor: 1.0,
-            zoom_with_keyboard: true,
-            tessellation_options: Default::default(),
-            repaint_on_widget_change: false,
-            screen_reader: false,
-            preload_font_glyphs: true,
-            warn_on_id_clash: cfg!(debug_assertions),
-            line_scroll_speed,
-            scroll_zoom_speed: 1.0 / 200.0,
-            input_options: Default::default(),
-            reduce_texture_memory: false,
-            max_passes: std::num::NonZeroUsize::new(2).unwrap(),
-        }
-    }
-}
-
 impl Options {
 
     pub fn style_mut(&mut self) -> &mut std::sync::Arc<Style> {
@@ -238,22 +207,6 @@ impl Options {
 pub enum Theme {
     Dark,
     Light,
-}
-
-impl Theme {
-    pub fn default_visuals(self) -> crate::Visuals {
-        match self {
-            Self::Dark => crate::Visuals::dark(),
-            Self::Light => crate::Visuals::light(),
-        }
-    }
-
-    pub fn default_style(self) -> Style {
-        Style {
-            visuals: self.default_visuals(),
-            ..Default::default()
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -318,16 +271,6 @@ pub struct InputOptions {
     pub max_click_dist: f32,
     pub max_click_duration: f64,
     pub max_double_click_delay: f64,
-}
-
-impl Default for InputOptions {
-    fn default() -> Self {
-        Self {
-            max_click_dist: 6.0,
-            max_click_duration: 0.8,
-            max_double_click_delay: 0.3,
-        }
-    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -601,13 +544,6 @@ pub struct Sense {
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct TooltipPassState {
     pub widget_tooltips: IdMap<PerWidgetTooltipState>,
-}
-
-impl TooltipPassState {
-    pub fn clear(&mut self) {
-        let Self { widget_tooltips } = self;
-        widget_tooltips.clear();
-    }
 }
 
 #[derive(Clone)]

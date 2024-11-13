@@ -80,8 +80,9 @@ fn create_geese_context() -> GeeseContext {
 async fn run() {
     let event_loop = EventLoop::new().unwrap();
 
-    let builder = winit::window::WindowBuilder::new();
-    let window = builder.build(&event_loop).unwrap();
+    let window_attributes =
+        winit::window::Window::default_attributes().with_title("A fantastic window!");
+    let window = event_loop.create_window(window_attributes).unwrap();
     let window = Arc::new(window);
     let initial_width = 1360;
     let initial_height = 768;
@@ -107,6 +108,7 @@ async fn run() {
                 label: None,
                 required_features: features,
                 required_limits: Default::default(),
+                memory_hints: wgpu::MemoryHints::Performance
             },
             None,
         )
@@ -137,7 +139,7 @@ async fn run() {
     let mut egui_renderer = EguiRenderer::new(&device, config.format, None, 1, &window);
 
     let mut close_requested = false;
-    
+
     let scale_factor = 1.0;
 
     let mut ctx = create_geese_context();
@@ -182,9 +184,6 @@ async fn run() {
                     WindowEvent::CursorLeft { .. } => {}
                     WindowEvent::MouseWheel { .. } => {}
                     WindowEvent::MouseInput { .. } => {}
-                    WindowEvent::TouchpadMagnify { .. } => {}
-                    WindowEvent::SmartMagnify { .. } => {}
-                    WindowEvent::TouchpadRotate { .. } => {}
                     WindowEvent::TouchpadPressure { .. } => {}
                     WindowEvent::AxisMotion { .. } => {}
                     WindowEvent::Touch(_) => {}
@@ -227,6 +226,7 @@ async fn run() {
                         surface_texture.present();
                         window.request_redraw();
                     }
+                    _=>{}
                 }
             }
 
@@ -271,12 +271,14 @@ impl EguiRenderer {
             &window,
             Some(window.scale_factor() as f32),
             None,
+            None
         );
         let egui_renderer = Renderer::new(
             device,
             output_color_format,
             output_depth_format,
             msaa_samples,
+            true
         );
 
         EguiRenderer {
@@ -301,7 +303,7 @@ impl EguiRenderer {
         window: &winit::window::Window,
         window_surface_view: &TextureView,
         screen_descriptor: ScreenDescriptor,
-        run_ui: impl FnOnce(&egui::Context),
+        mut run_ui: impl FnMut(&egui::Context),
     ) {
         self.state
             .egui_ctx()
@@ -326,22 +328,23 @@ impl EguiRenderer {
         }
         self.renderer
             .update_buffers(device, queue, encoder, &tris, &screen_descriptor);
-        let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: window_surface_view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            label: Some("egui main render pass"),
-            occlusion_query_set: None,
-        });
-        self.renderer.render(&mut rpass, &tris, &screen_descriptor);
-        drop(rpass);
+        {
+            let mut rpass = encoder.begin_render_pass(&RenderPassDescriptor {
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: window_surface_view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Load,
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                label: Some("egui main render pass"),
+                occlusion_query_set: None,
+            });
+            self.renderer.render(&mut rpass.forget_lifetime(), &tris, &screen_descriptor);
+        }
         for x in &full_output.textures_delta.free {
             self.renderer.free_texture(x)
         }

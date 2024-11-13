@@ -124,8 +124,17 @@ pub struct LabelSelectionState {
     pub has_reached_secondary: bool,
     pub text_to_copy: String,
     pub last_copied_galley_rect: Option<Rect>,
-    pub painted_shape_idx: Vec<usize>,
+    pub painted_selections: Vec<(ShapeIdx, Vec<RowVertexIndices>)>,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RowVertexIndices {
+    pub row: usize,
+    pub vertex_indices: [u32; 6],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShapeIdx(pub usize);
 
 impl LabelSelectionState {
     /// Converts the `egui` object reference to a reference of this type.
@@ -146,17 +155,122 @@ impl From<LabelSelectionState> for egui::text_selection::LabelSelectionState {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Options {
-    pub style: std::sync::Arc<Style>,
+    #[serde(skip)]
+    pub dark_style: std::sync::Arc<Style>,
+    #[serde(skip)]
+    pub light_style: std::sync::Arc<Style>,
+    pub theme_preference: ThemePreference,
+    pub fallback_theme: Theme,
+    #[serde(skip)]
+    pub system_theme: Option<Theme>,
     pub zoom_factor: f32,
     pub zoom_with_keyboard: bool,
     pub tessellation_options: epaint::TessellationOptions,
     pub repaint_on_widget_change: bool,
+    pub max_passes: std::num::NonZeroUsize,
     pub screen_reader: bool,
     pub preload_font_glyphs: bool,
     pub warn_on_id_clash: bool,
     pub line_scroll_speed: f32,
     pub scroll_zoom_speed: f32,
+    pub input_options: InputOptions,
     pub reduce_texture_memory: bool,
+}
+
+impl Options {
+
+    pub fn style_mut(&mut self) -> &mut std::sync::Arc<Style> {
+        match self.theme() {
+            Theme::Dark => &mut self.dark_style,
+            Theme::Light => &mut self.light_style,
+        }
+    }
+
+    pub fn theme(&self) -> Theme {
+        match self.theme_preference {
+            ThemePreference::Dark => Theme::Dark,
+            ThemePreference::Light => Theme::Light,
+            ThemePreference::System => self.system_theme.unwrap_or(self.fallback_theme),
+        }
+    }
+
+    pub fn style(&self) -> &std::sync::Arc<Style> {
+        match self.theme() {
+            Theme::Dark => &self.dark_style,
+            Theme::Light => &self.light_style,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub enum Theme {
+    Dark,
+    Light,
+}
+
+#[derive(Clone)]
+pub struct NumberFormatter(
+    pub Arc<dyn 'static + Sync + Send + Fn(f64, crate::RangeInclusive<usize>) -> String>,
+);
+
+impl NumberFormatter {
+    /// The first argument is the number to be formatted.
+    /// The second argument is the range of the number of decimals to show.
+    ///
+    /// See [`Self::format`] for the meaning of the `decimals` argument.
+    #[inline]
+    pub fn new(
+        formatter: impl 'static + Sync + Send + Fn(f64, crate::RangeInclusive<usize>) -> String,
+    ) -> Self {
+        Self(Arc::new(formatter))
+    }
+
+    #[inline]
+    pub fn format(&self, value: f64, decimals: crate::RangeInclusive<usize>) -> String {
+        (self.0)(value, decimals)
+    }
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        #[allow(deprecated)]
+        Self {
+            override_font_id: None,
+            override_text_style: None,
+            text_styles: default_text_styles(),
+            drag_value_text_style: TextStyle::Button,
+            number_formatter: NumberFormatter(Arc::new(emath::format_with_decimals_in_range)),
+            wrap: None,
+            wrap_mode: None,
+            spacing: Spacing::default(),
+            interaction: Interaction::default(),
+            visuals: Visuals::default(),
+            animation_time: 1.0 / 12.0,
+            #[cfg(debug_assertions)]
+            debug: Default::default(),
+            explanation_tooltips: false,
+            url_in_tooltip: false,
+            always_scroll_the_only_direction: false,
+            scroll_animation: ScrollAnimation::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub enum ThemePreference {
+    Dark,
+    Light,
+    System,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct InputOptions {
+    pub max_click_dist: f32,
+    pub max_click_duration: f64,
+    pub max_double_click_delay: f64,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -179,6 +293,7 @@ pub struct Style {
     pub explanation_tooltips: bool,
     pub url_in_tooltip: bool,
     pub always_scroll_the_only_direction: bool,
+    pub scroll_animation: ScrollAnimation,
 }
 
 fn default_number_formatter() -> NumberFormatter {
@@ -253,8 +368,8 @@ pub struct NamedContextCallback {
 }
 
 pub struct Plugins {
-    pub on_begin_frame: Vec<NamedContextCallback>,
-    pub on_end_frame: Vec<NamedContextCallback>,
+    pub on_begin_pass: Vec<NamedContextCallback>,
+    pub on_end_pass: Vec<NamedContextCallback>,
 }
 
 pub struct WrappedTextureManager(Arc<RwLock<epaint::TextureManager>>);
@@ -266,24 +381,25 @@ pub struct ViewportState {
     pub builder: ViewportBuilder,
     pub viewport_ui_cb: Option<Arc<DeferredViewportUiCallback>>,
     pub input: InputState,
-    pub this_frame: FrameState,
-    pub prev_frame: FrameState,
+    pub this_pass: PassState,
+    pub prev_pass: PassState,
     pub used: bool,
     pub repaint: ViewportRepaintInfo,
     pub hits: WidgetHits,
     pub interact_widgets: InteractionSnapshot,
     pub graphics: GraphicLayers,
     pub output: PlatformOutput,
-    pub commands: Vec<ViewportCommand>
+    pub commands: Vec<ViewportCommand>,
+    pub num_multipass_in_row: usize,
 }
 
 pub struct ViewportRepaintInfo {
-    pub frame_nr: u64,
+    pub cumulative_pass_nr: u64,
     pub repaint_delay: Duration,
     pub outstanding: u8,
     pub causes: Vec<RepaintCause>,
     pub prev_causes: Vec<RepaintCause>,
-    pub prev_frame_paint_delay: Duration,
+    pub prev_pass_paint_delay: Duration,
 }
 
 #[derive(Clone)]
@@ -296,26 +412,26 @@ pub struct DebugRect {
 
 #[derive(Clone)]
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct FrameState {
+pub struct PassState {
     pub used_ids: IdMap<Rect>,
     pub widgets: crate::private_hack::widget_rect::WidgetRects,
     pub layers: ahash::HashMap<LayerId, PerLayerState>,
-    pub tooltips: TooltipFrameState,
+    pub tooltips: TooltipPassState,
     pub available_rect: Rect,
     pub unused_rect: Rect,
     pub used_by_panels: Rect,
-    pub scroll_target: [Option<(Rangef, Option<Align>)>; 2],
-    pub scroll_delta: Vec2,
+    pub scroll_target: [Option<ScrollTarget>; 2],
+    pub scroll_delta: (Vec2, style::ScrollAnimation),
     #[cfg(feature = "accesskit")]
     #[serde(skip)]
-    pub accesskit_state: Option<AccessKitFrameState>,
-    pub highlight_next_frame: IdSet,
+    pub accesskit_state: Option<AccessKitPassState>,
+    pub highlight_next_pass: IdSet,
     #[cfg(debug_assertions)]
     #[serde(skip)]
     pub debug_rect: Option<DebugRect>,
 }
 
-impl Default for FrameState {
+impl Default for PassState {
     fn default() -> Self {
         Self {
             used_ids: Default::default(),
@@ -326,10 +442,10 @@ impl Default for FrameState {
             unused_rect: Rect::NAN,
             used_by_panels: Rect::NAN,
             scroll_target: [None, None],
-            scroll_delta: Vec2::default(),
+            scroll_delta: (Vec2::default(), style::ScrollAnimation::none()),
             #[cfg(feature = "accesskit")]
             accesskit_state: None,
-            highlight_next_frame: Default::default(),
+            highlight_next_pass: Default::default(),
 
             #[cfg(debug_assertions)]
             debug_rect: None,
@@ -415,12 +531,6 @@ pub struct PerLayerState {
     pub widget_with_tooltip: Option<Id>,
 }
 
-#[derive(Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct ScrollAnimation {
-    pub points_per_second: f32,
-    pub duration: Rangef,
-}
 
 #[derive(Clone, Default)]
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -432,15 +542,8 @@ pub struct Sense {
 
 #[derive(Clone, Default)]
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct TooltipFrameState {
+pub struct TooltipPassState {
     pub widget_tooltips: IdMap<PerWidgetTooltipState>,
-}
-
-impl TooltipFrameState {
-    pub fn clear(&mut self) {
-        let Self { widget_tooltips } = self;
-        widget_tooltips.clear();
-    }
 }
 
 #[derive(Clone)]
@@ -448,4 +551,12 @@ impl TooltipFrameState {
 pub struct PerWidgetTooltipState {
     pub bounding_rect: Rect,
     pub tooltip_count: usize,
+}
+
+#[derive(Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ScrollTarget {
+    pub range: Rangef,
+    pub align: Option<Align>,
+    pub animation: style::ScrollAnimation,
 }

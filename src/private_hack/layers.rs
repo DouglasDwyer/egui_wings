@@ -17,7 +17,7 @@ impl PaintList {
     }
 }
 
-pub type GraphicLayersInner = [IdMap<PaintList>; 6];
+pub type GraphicLayersInner = [IdMap<PaintList>; 5];
 
 #[derive(Clone, Default)]
 pub struct GraphicLayers(GraphicLayersInner);

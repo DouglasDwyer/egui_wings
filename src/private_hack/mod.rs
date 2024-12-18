@@ -86,17 +86,38 @@ pub struct Memory {
     #[serde(skip)]
     pub new_font_definitions: Option<epaint::text::FontDefinitions>,
     #[serde(skip)]
+    pub add_fonts: Vec<FontInsert>,
+    #[serde(skip)]
     pub viewport_id: ViewportId,
     #[serde(skip)]
     pub popup: Option<Id>,
     #[serde(skip)]
     pub everything_is_visible: bool,
-    pub layer_transforms: ahash::HashMap<LayerId, TSTransform>,
+    pub to_global: ahash::HashMap<LayerId, TSTransform>,
     pub areas: ViewportIdMap<Areas>,
     #[serde(skip)]
     pub interactions: ViewportIdMap<InteractionState>,
     #[serde(skip)]
     pub focus: ViewportIdMap<Focus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FontInsert {
+    pub name: String,
+    pub data: FontData,
+    pub families: Vec<InsertFontFamily>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InsertFontFamily {
+    pub family: FontFamily,
+    pub priority: FontPriority,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FontPriority {
+    Highest,
+    Lowest,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -300,11 +321,16 @@ fn default_number_formatter() -> NumberFormatter {
     NumberFormatter::new(emath::format_with_decimals_in_range)
 }
 
+type OrderMap = ahash::HashMap<LayerId, usize>;
+
 #[derive(Clone, Default)]
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Areas {
     pub areas: IdMap<egui::AreaState>,
+    pub visible_areas_last_frame: ahash::HashSet<LayerId>,
+    pub visible_areas_current_frame: ahash::HashSet<LayerId>,
     pub order: Vec<LayerId>,
+    pub order_map: OrderMap,
     pub visible_last_frame: ahash::HashSet<LayerId>,
     pub visible_current_frame: ahash::HashSet<LayerId>,
     pub wants_to_be_on_top: ahash::HashSet<LayerId>,
@@ -329,6 +355,8 @@ pub struct Focus {
     give_to_next: bool,
     last_interested: Option<Id>,
     focus_direction: FocusDirection,
+    top_modal_layer: Option<LayerId>,
+    top_modal_layer_current_frame: Option<LayerId>,
     focus_widgets_cache: IdMap<Rect>,
 }
 

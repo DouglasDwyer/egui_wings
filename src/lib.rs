@@ -193,10 +193,11 @@ impl CreateContextSnapshot {
     fn apply_memory_snapshot(ctx: &mut private_hack::ContextImpl, snapshot: MemorySnapshot) {
         ctx.memory.data.insert_temp(Id::new(ViewportId::ROOT), egui::text_selection::LabelSelectionState::from(snapshot.label_selection_state));
         ctx.memory.new_font_definitions = snapshot.new_font_definitions;
+        ctx.memory.add_fonts = snapshot.add_fonts;
         ctx.memory.viewport_id = snapshot.viewport_id;
         ctx.memory.popup = snapshot.popup;
         ctx.memory.everything_is_visible = snapshot.everything_is_visible;
-        ctx.memory.layer_transforms = snapshot.layer_transforms;
+        ctx.memory.to_global = snapshot.to_global;
         ctx.memory.areas = snapshot.areas;
         ctx.memory.interactions = snapshot.interactions;
         ctx.memory.focus = snapshot.focus;

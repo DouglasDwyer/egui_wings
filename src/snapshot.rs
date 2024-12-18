@@ -116,14 +116,16 @@ pub(super) struct MemorySnapshot {
     pub label_selection_state: LabelSelectionState,
     /// The `Memory::new_font_definitions` field.
     pub new_font_definitions: Option<epaint::text::FontDefinitions>,
+    /// The `Memory::add_fonts` field.
+    pub add_fonts: Vec<FontInsert>,
     /// The `Memory::viewport_id` field.
     pub viewport_id: ViewportId,
     /// The `Memory::popup` field.
     pub popup: Option<Id>,
     /// The `Memory::everything_is_visible` field.
     pub everything_is_visible: bool,
-    /// The `Memory::layer_transforms` field.
-    pub layer_transforms: HashMap<LayerId, TSTransform>,
+    /// The `Memory::to_global` field.
+    pub to_global: HashMap<LayerId, TSTransform>,
     /// The `Memory::areas` field.
     pub areas: ViewportIdMap<Areas>,
     /// The `Memory::interactions` field.
@@ -134,7 +136,7 @@ pub(super) struct MemorySnapshot {
 
 impl MemorySnapshot {
     /// The number of fields that this struct has.
-    const FIELDS: usize = 9;
+    const FIELDS: usize = 10;
 }
 
 /// Holds the instantaneous state of an `Options` for synchronizing
@@ -271,10 +273,11 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, Memory> {
         let mut serialize_tuple = serializer.serialize_tuple(MemorySnapshot::FIELDS)?;
         serialize_tuple.serialize_element(LabelSelectionState::from_label_selection_state(&self.0.data.get_temp::<egui::text_selection::LabelSelectionState>(Id::new(ViewportId::ROOT)).unwrap_or_default()))?;
         serialize_tuple.serialize_element(&self.0.new_font_definitions)?;
+        serialize_tuple.serialize_element(&self.0.add_fonts)?;
         serialize_tuple.serialize_element(&self.0.viewport_id)?;
         serialize_tuple.serialize_element(&self.0.popup)?;
         serialize_tuple.serialize_element(&self.0.everything_is_visible)?;
-        serialize_tuple.serialize_element(&self.0.layer_transforms)?;
+        serialize_tuple.serialize_element(&self.0.to_global)?;
         serialize_tuple.serialize_element(&SnapshotSerialize(&self.0.areas))?;
         serialize_tuple.serialize_element(&self.0.interactions)?;
         serialize_tuple.serialize_element(&self.0.focus)?;
@@ -315,9 +318,12 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, ViewportIdMap<Areas>> {
 
 impl<'a> serde::Serialize for SnapshotSerialize<'a, Areas> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut serialize_tuple = serializer.serialize_tuple(6)?;
+        let mut serialize_tuple = serializer.serialize_tuple(9)?;
         serialize_tuple.serialize_element(&SnapshotSerialize(&self.0.areas))?;
+        serialize_tuple.serialize_element(&self.0.visible_areas_last_frame)?;
+        serialize_tuple.serialize_element(&self.0.visible_areas_current_frame)?;
         serialize_tuple.serialize_element(&self.0.order)?;
+        serialize_tuple.serialize_element(&self.0.order_map)?;
         serialize_tuple.serialize_element(&self.0.visible_current_frame)?;
         serialize_tuple.serialize_element(&self.0.visible_last_frame)?;
         serialize_tuple.serialize_element(&self.0.wants_to_be_on_top)?;
@@ -608,36 +614,40 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<MemorySnapshot>
         let new_font_definitions = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-        let viewport_id = seq
+        let add_fonts = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
-        let popup = seq
+        let viewport_id = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
-        let everything_is_visible = seq
+        let popup = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
-        let layer_transforms = seq
+        let everything_is_visible = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
+        let to_global = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
         let areas = seq
             .next_element::<SnapshotDeserialize<ViewportIdMap<Areas>>>()?
-            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?
+            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?
             .0;
         let interactions = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
         let focus = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(9, &self))?;
 
         Ok(SnapshotDeserialize(MemorySnapshot {
             label_selection_state,
             new_font_definitions,
+            add_fonts,
             viewport_id,
             popup,
             everything_is_visible,
-            layer_transforms,
+            to_global,
             areas,
             interactions,
             focus,
@@ -669,7 +679,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportIdMap<A
 
 impl<'de> serde::de::Deserialize<'de> for SnapshotDeserialize<Areas> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_tuple(6, SnapshotDeserializeVisitor::<Areas>::default())
+        deserializer.deserialize_tuple(9, SnapshotDeserializeVisitor::<Areas>::default())
     }
 }
 
@@ -685,29 +695,42 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<Areas> {
             .next_element::<SnapshotDeserialize<IdMap<AreaState>>>()?
             .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?
             .0;
+        let visible_areas_last_frame = seq
+        .next_element()?
+        .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+    let visible_areas_current_frame = seq
+    .next_element()?
+    .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
         let order = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-        let visible_current_frame = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
-        let visible_last_frame = seq
-            .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
-        let wants_to_be_on_top = seq
+        let order_map = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
-        let sublayers = seq
+        let visible_current_frame = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
+        let visible_last_frame = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
+        let wants_to_be_on_top = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?;
+        let sublayers = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
 
         Ok(SnapshotDeserialize(Areas {
             areas,
+            visible_areas_last_frame,
+            visible_areas_current_frame,
             order,
+            order_map,
             visible_current_frame,
             visible_last_frame,
             wants_to_be_on_top,
             sublayers,
+
         }))
     }
 }
@@ -893,7 +916,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<GraphicLayers> 
     }
 
     fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        let mut raw_layers = std::array::from_fn::<_, 6, _>(|i| {
+        let mut raw_layers = std::array::from_fn::<_, 5, _>(|i| {
             Some(
                 seq.next_element::<SnapshotDeserialize<IdMap<PaintList>>>()
                     .and_then(|x| x.ok_or_else(|| serde::de::Error::invalid_length(i, &self))),

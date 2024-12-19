@@ -1,7 +1,6 @@
 use crate::private_hack::*;
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct InteractionSnapshot {
     pub clicked: Option<Id>,
     pub long_touched: Option<Id>,

@@ -1,7 +1,6 @@
 use crate::private_hack::*;
 
-#[derive(Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct WidgetRect {
     pub id: Id,
     pub layer_id: LayerId,
@@ -11,8 +10,7 @@ pub struct WidgetRect {
     pub enabled: bool,
 }
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct WidgetRects {
     by_layer: ahash::HashMap<LayerId, Vec<WidgetRect>>,
     by_id: IdMap<(usize, WidgetRect)>,

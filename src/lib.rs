@@ -2,29 +2,29 @@
 #![warn(clippy::missing_docs_in_private_items)]
 
 //! # egui_wings
-//! 
+//!
 //! This crate facilitates sharing an `egui::Context` between a host and multiple guest WASM modules. This allows WASM plugins to draw UI and easily display it via the host.
-//! 
+//!
 //! ---
-//! 
+//!
 //! ### Usage
-//! 
+//!
 //! The following code snippet shows how to use `egui_wings` from a WASM plugin (the complete example may be found in the [`egui_wings_example` folder](/egui_wings_example/)). It defines a `WingsSystem` which will store the WASM plugin's state. Each frame, the `draw_ui` method is invoked. It accesses the host `egui::Context` via a system dependency and then makes normal `egui` calls to draw a UI.
-//! 
+//!
 //! ```ignore
 //! use egui_wings::*;
 //! use example_host::*;
 //! use wings::*;
-//! 
+//!
 //! instantiate_systems!(ExampleHost, [PluginSystem]);
-//! 
+//!
 //! /// An object that will be instantiated inside a WASM plugin.
 //! #[export_system]
 //! pub struct PluginSystem {
 //!     /// A handle for accessing system dependencies.
 //!     ctx: WingsContextHandle<Self>,
 //! }
-//! 
+//!
 //! impl PluginSystem {
 //!     /// Submits the `egui` commands to draw the debug windows.
 //!     fn draw_ui(&mut self, _: &example_host::on::Render) {
@@ -38,12 +38,12 @@
 //!         });
 //!     }
 //! }
-//! 
+//!
 //! impl WingsSystem for PluginSystem {
 //!     const DEPENDENCIES: Dependencies = dependencies().with::<dyn Egui>();
-//! 
+//!
 //!     const EVENT_HANDLERS: EventHandlers<Self> = event_handlers().with(Self::draw_ui);
-//! 
+//!
 //!     fn new(ctx: WingsContextHandle<Self>) -> Self {
 //!         Self { ctx }
 //!     }
@@ -93,11 +93,10 @@ impl dyn Egui {
             initialized = true;
             result
         });
-        
+
         let deltas = if initialized {
             ContextSnapshotDeltas::default()
-        }
-        else {
+        } else {
             ContextSnapshotDeltas::from_context(context)
         };
 
@@ -106,7 +105,7 @@ impl dyn Egui {
 
         EguiHandle {
             ctx: self,
-            initial_deltas
+            initial_deltas,
         }
     }
 }
@@ -118,7 +117,7 @@ pub struct EguiHandle<'a> {
     /// The underlying `egui` context.
     ctx: &'a dyn Egui,
     /// The state of the context at the beginning of the transaction.
-    initial_deltas: ContextSnapshotDeltas
+    initial_deltas: ContextSnapshotDeltas,
 }
 
 impl<'a> Deref for EguiHandle<'a> {
@@ -131,7 +130,11 @@ impl<'a> Deref for EguiHandle<'a> {
 
 impl<'a> Drop for EguiHandle<'a> {
     fn drop(&mut self) {
-        self.ctx.end_context_edit(CreateContextSnapshot::FromContext(self.clone(), self.initial_deltas));
+        self.ctx
+            .end_context_edit(CreateContextSnapshot::FromContext(
+                self.clone(),
+                self.initial_deltas,
+            ));
     }
 }
 
@@ -142,28 +145,33 @@ pub enum CreateContextSnapshot {
     Created(ContextSnapshot),
     /// When this object is serialized, it will use a snapshot of the provided
     /// context with the given deltas.
-    FromContext(Context, ContextSnapshotDeltas)
+    FromContext(Context, ContextSnapshotDeltas),
 }
 
 impl CreateContextSnapshot {
     /// Applies the snapshot to the current context. Panics if this snapshot is
     /// not the `Created` variant.
     pub fn apply(self, context: &Context) {
-        let Self::Created(value) = self else { panic!("Snapshot was not `Created` variant.") };
+        let Self::Created(value) = self else {
+            panic!("Snapshot was not `Created` variant.")
+        };
         let exposed = private_hack::Context::from_context(context);
         let mut ctx = exposed.0.write();
-        
-        let frame_nr = ctx.viewports.get(&ctx.last_viewport).map(|x| x.repaint.cumulative_pass_nr).unwrap_or(u64::MAX);
+
+        let frame_nr = ctx
+            .viewports
+            .get(&ctx.last_viewport)
+            .map(|x| x.repaint.cumulative_pass_nr)
+            .unwrap_or(u64::MAX);
         let new_frame = frame_nr != value.deltas.frame_count;
         if let Some(style) = value.style {
-
             match ctx.memory.options.theme() {
                 private_hack::Theme::Dark => {
                     ctx.memory.options.dark_style = style;
-                },
+                }
                 private_hack::Theme::Light => {
                     ctx.memory.options.light_style = style;
-                },
+                }
             }
         }
 
@@ -188,10 +196,13 @@ impl CreateContextSnapshot {
             ctx.memory.new_font_definitions = to_insert;
         }
     }
-    
+
     /// Updates the memory from the snapshot.
     fn apply_memory_snapshot(ctx: &mut private_hack::ContextImpl, snapshot: MemorySnapshot) {
-        ctx.memory.data.insert_temp(Id::new(ViewportId::ROOT), egui::text_selection::LabelSelectionState::from(snapshot.label_selection_state));
+        ctx.memory.data.insert_temp(
+            Id::new(ViewportId::ROOT),
+            egui::text_selection::LabelSelectionState::from(snapshot.label_selection_state),
+        );
         ctx.memory.new_font_definitions = snapshot.new_font_definitions;
         ctx.memory.add_fonts = snapshot.add_fonts;
         ctx.memory.viewport_id = snapshot.viewport_id;
@@ -222,13 +233,14 @@ impl CreateContextSnapshot {
     }
 
     /// Updates the list of viewports from the snapshot list.
-    fn apply_viewport_snapshots(ctx: &mut private_hack::ContextImpl, deltas: &ContextSnapshotDeltas, snapshots: ViewportIdMap<ViewportStateSnapshot>) {
+    fn apply_viewport_snapshots(
+        ctx: &mut private_hack::ContextImpl,
+        deltas: &ContextSnapshotDeltas,
+        snapshots: ViewportIdMap<ViewportStateSnapshot>,
+    ) {
         ctx.viewports.retain(|x, _| snapshots.contains_key(x));
         for (id, snapshot) in snapshots {
-            let viewport = ctx
-                .viewports
-                .get_mut(&id)
-                .expect("Failed to get viewport.");
+            let viewport = ctx.viewports.get_mut(&id).expect("Failed to get viewport.");
             viewport.class = snapshot.class;
             viewport.builder = snapshot.builder;
             viewport.input = snapshot.input;
@@ -243,14 +255,18 @@ impl CreateContextSnapshot {
             viewport.commands = snapshot.commands;
             viewport.num_multipass_in_row = snapshot.num_multipass_in_row;
         }
-        
+
         Self::reinitialize_galleys(ctx)
     }
 
     /// Reloads all galleys from the cache, because galley data is not serialized
     /// within [`ContextSnapshot`]s.
     fn reinitialize_galleys(ctx: &mut private_hack::ContextImpl) {
-        let pixels_per_point = ctx.viewports.get(&ctx.last_viewport).map(|x| x.input.pixels_per_point).unwrap_or(1.0);
+        let pixels_per_point = ctx
+            .viewports
+            .get(&ctx.last_viewport)
+            .map(|x| x.input.pixels_per_point)
+            .unwrap_or(1.0);
         if let Some(fonts) = ctx.fonts.get(&pixels_per_point.into()) {
             for viewport in ctx.viewports.values_mut() {
                 for paint_lists in viewport.graphics.as_inner_mut() {
@@ -284,31 +300,28 @@ impl CreateContextSnapshot {
             let input = &viewport.input;
             let pixels_per_point = input.pixels_per_point();
             let max_texture_side = input.max_texture_side;
-    
+
             if let Some(font_definitions) = ctx.memory.new_font_definitions.take() {
                 // New font definition loaded, so we need to reload all fonts.
                 ctx.fonts.clear();
                 ctx.font_definitions = font_definitions;
             }
-    
+
             let mut is_new = false;
-    
-            let fonts = ctx
-                .fonts
-                .entry(pixels_per_point.into())
-                .or_insert_with(|| {
-                    is_new = true;
-                    egui::epaint::Fonts::new(
-                        pixels_per_point,
-                        max_texture_side,
-                        ctx.font_definitions.clone(),
-                    )
-                });
-    
+
+            let fonts = ctx.fonts.entry(pixels_per_point.into()).or_insert_with(|| {
+                is_new = true;
+                egui::epaint::Fonts::new(
+                    pixels_per_point,
+                    max_texture_side,
+                    ctx.font_definitions.clone(),
+                )
+            });
+
             {
                 fonts.begin_pass(pixels_per_point, max_texture_side);
             }
-    
+
             if is_new && ctx.memory.options.preload_font_glyphs {
                 // Preload the most common characters for the most common fonts.
                 // This is not very important to do, but may save a few GPU operations.
@@ -330,11 +343,11 @@ impl Serialize for CreateContextSnapshot {
 
                 let style = (deltas.style_count != current_deltas.style_count)
                     .then(|| ctx.memory.options.style().clone());
-    
+
                 let font_definitions = (deltas.font_definitions_count
                     != current_deltas.font_definitions_count)
                     .then_some(&ctx.font_definitions);
-    
+
                 let borrow = ContextShapshotBorrow {
                     deltas: &current_deltas,
                     font_definitions,
@@ -345,15 +358,19 @@ impl Serialize for CreateContextSnapshot {
                     viewports: &ctx.viewports,
                 };
                 <ContextShapshotBorrow as Serialize>::serialize(&borrow, serializer)
-            },
-            CreateContextSnapshot::Created(_) => Err(serde::ser::Error::custom("Cannot serialize created snapshot")),
+            }
+            CreateContextSnapshot::Created(_) => Err(serde::ser::Error::custom(
+                "Cannot serialize created snapshot",
+            )),
         }
     }
 }
 
 impl<'de> Deserialize<'de> for CreateContextSnapshot {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(Self::Created(<ContextSnapshot as Deserialize>::deserialize(deserializer)?))
+        Ok(Self::Created(
+            <ContextSnapshot as Deserialize>::deserialize(deserializer)?,
+        ))
     }
 }
 

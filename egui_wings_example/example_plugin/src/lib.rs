@@ -1,6 +1,6 @@
 use egui_demo_lib::*;
-use egui_wings::*;
 use egui_wings::egui::*;
+use egui_wings::*;
 use example_host::*;
 use wings::*;
 
@@ -16,7 +16,7 @@ pub struct PluginSystem {
     /// The text that the user entered in the example field.
     text: String,
     /// The widget gallery window.
-    gallery: WidgetGallery
+    gallery: WidgetGallery,
 }
 
 impl PluginSystem {
@@ -29,16 +29,16 @@ impl PluginSystem {
             .resizable(true)
             .vscroll(true)
             .default_open(false)
-        .show(&ctx, |ui| {
-            ui.label(format!("Click count: {}", self.click_count));
+            .show(&ctx, |ui| {
+                ui.label(format!("Click count: {}", self.click_count));
 
-            if ui.button("Button!").clicked() {
-                self.click_count += 1;
-            }
+                if ui.button("Button!").clicked() {
+                    self.click_count += 1;
+                }
 
-            ui.separator();    
-            ui.text_edit_singleline(&mut self.text);
-        });
+                ui.separator();
+                ui.text_edit_singleline(&mut self.text);
+            });
 
         self.gallery.show(&ctx, &mut true);
     }
@@ -50,6 +50,11 @@ impl WingsSystem for PluginSystem {
     const EVENT_HANDLERS: EventHandlers<Self> = event_handlers().with(Self::draw_ui);
 
     fn new(ctx: WingsContextHandle<Self>) -> Self {
-        Self { ctx, click_count: 0, text: String::default(), gallery: WidgetGallery::default() }
+        Self {
+            ctx,
+            click_count: 0,
+            text: String::default(),
+            gallery: WidgetGallery::default(),
+        }
     }
 }

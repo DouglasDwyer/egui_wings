@@ -1,15 +1,8 @@
 #![allow(warnings)]
 
 pub use egui::{
-    emath,
-    epaint,
-    Id,
-    InputState,
-    LayerId,
-    ViewportBuilder,
-    ViewportClass,
-    ViewportId,
-    ViewportIdMap
+    emath, epaint, Id, InputState, LayerId, ViewportBuilder, ViewportClass, ViewportId,
+    ViewportIdMap,
 };
 
 pub use crate::private_hack::animation_manager::*;
@@ -17,12 +10,12 @@ pub use crate::private_hack::hit_test::*;
 pub use crate::private_hack::interaction::*;
 pub use crate::private_hack::layers::*;
 pub use crate::private_hack::widget_rect::*;
-use egui::*;
 use egui::emath::*;
 use egui::epaint::*;
 use egui::load::*;
 use egui::os::*;
 use egui::style::*;
+use egui::*;
 use serde::*;
 use std::mem::*;
 use std::sync::*;
@@ -73,7 +66,7 @@ pub struct ContextImpl {
     pub embed_viewports: bool,
     #[cfg(feature = "accesskit")]
     pub is_accesskit_enabled: bool,
-    pub loaders: Arc<Loaders>
+    pub loaders: Arc<Loaders>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -160,17 +153,13 @@ pub struct ShapeIdx(pub usize);
 impl LabelSelectionState {
     /// Converts the `egui` object reference to a reference of this type.
     pub fn from_label_selection_state(value: &egui::text_selection::LabelSelectionState) -> &Self {
-        unsafe {
-            transmute(value)
-        }
+        unsafe { transmute(value) }
     }
 }
 
 impl From<LabelSelectionState> for egui::text_selection::LabelSelectionState {
     fn from(value: LabelSelectionState) -> Self {
-        unsafe {
-            transmute(value)
-        }
+        unsafe { transmute(value) }
     }
 }
 
@@ -199,7 +188,6 @@ pub struct Options {
 }
 
 impl Options {
-
     pub fn style_mut(&mut self) -> &mut std::sync::Arc<Style> {
         match self.theme() {
             Theme::Dark => &mut self.dark_style,
@@ -223,8 +211,7 @@ impl Options {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Theme {
     Dark,
     Light,
@@ -278,16 +265,14 @@ impl Default for Style {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum ThemePreference {
     Dark,
     Light,
     System,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct InputOptions {
     pub max_click_dist: f32,
     pub max_click_duration: f64,
@@ -323,29 +308,24 @@ fn default_number_formatter() -> NumberFormatter {
 
 type OrderMap = ahash::HashMap<LayerId, usize>;
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct Areas {
     pub areas: IdMap<egui::AreaState>,
     pub visible_areas_last_frame: ahash::HashSet<LayerId>,
     pub visible_areas_current_frame: ahash::HashSet<LayerId>,
     pub order: Vec<LayerId>,
     pub order_map: OrderMap,
-    pub visible_last_frame: ahash::HashSet<LayerId>,
-    pub visible_current_frame: ahash::HashSet<LayerId>,
     pub wants_to_be_on_top: ahash::HashSet<LayerId>,
     pub sublayers: ahash::HashMap<LayerId, ahash::HashSet<LayerId>>,
 }
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct InteractionState {
     pub potential_click_id: Option<Id>,
     pub potential_drag_id: Option<Id>,
 }
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct Focus {
     focused_widget: Option<FocusWidget>,
     id_previous_frame: Option<Id>,
@@ -360,15 +340,13 @@ pub struct Focus {
     focus_widgets_cache: IdMap<Rect>,
 }
 
-#[derive(Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 struct FocusWidget {
     pub id: Id,
     pub filter: EventFilter,
 }
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct EventFilter {
     pub tab: bool,
     pub horizontal_arrows: bool,
@@ -376,8 +354,7 @@ pub struct EventFilter {
     pub escape: bool,
 }
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 enum FocusDirection {
     Up,
     Right,
@@ -430,16 +407,14 @@ pub struct ViewportRepaintInfo {
     pub prev_pass_paint_delay: Duration,
 }
 
-#[derive(Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct DebugRect {
     pub rect: Rect,
     pub callstack: String,
     pub is_clicking: bool,
 }
 
-#[derive(Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct PassState {
     pub used_ids: IdMap<Rect>,
     pub widgets: crate::private_hack::widget_rect::WidgetRects,
@@ -552,37 +527,31 @@ pub type IdSet = std::collections::HashSet<Id, BuildIdHasher>;
 
 pub type IdMap<V> = std::collections::HashMap<Id, V, BuildIdHasher>;
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct PerLayerState {
     pub open_popups: ahash::HashSet<Id>,
     pub widget_with_tooltip: Option<Id>,
 }
 
-
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct Sense {
     pub click: bool,
     pub drag: bool,
     pub focusable: bool,
 }
 
-#[derive(Clone, Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct TooltipPassState {
     pub widget_tooltips: IdMap<PerWidgetTooltipState>,
 }
 
-#[derive(Clone)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct PerWidgetTooltipState {
     pub bounding_rect: Rect,
     pub tooltip_count: usize,
 }
 
-#[derive(Clone, Debug)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ScrollTarget {
     pub range: Rangef,
     pub align: Option<Align>,

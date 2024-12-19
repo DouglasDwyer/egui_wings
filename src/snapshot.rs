@@ -31,18 +31,28 @@ impl ContextSnapshotDeltas {
     pub fn from_context(context: &egui::Context) -> Self {
         let exposed = crate::private_hack::Context::from_context(context);
         let mut ctx = exposed.0.write();
-        
+
         let mut previous_deltas = ctx.memory.data.get_temp::<Self>(Id::NULL).unwrap_or(Self {
             font_definitions_count: 0,
             frame_count: 0,
-            style_count: 0
+            style_count: 0,
         });
 
-        let frame_count = ctx.viewports.get(&ctx.last_viewport).map(|x| x.repaint.cumulative_pass_nr).unwrap_or(0);
+        let frame_count = ctx
+            .viewports
+            .get(&ctx.last_viewport)
+            .map(|x| x.repaint.cumulative_pass_nr)
+            .unwrap_or(0);
         previous_deltas.frame_count = frame_count;
 
         let new_style = ctx.memory.options.style().clone();
-        if ctx.memory.data.get_temp::<LastStyle>(Id::NULL).map(|x| !Arc::ptr_eq(&x.0, &new_style)).unwrap_or_default() {
+        if ctx
+            .memory
+            .data
+            .get_temp::<LastStyle>(Id::NULL)
+            .map(|x| !Arc::ptr_eq(&x.0, &new_style))
+            .unwrap_or_default()
+        {
             previous_deltas.style_count += 1;
             ctx.memory.data.insert_temp(Id::NULL, LastStyle(new_style));
         }
@@ -167,7 +177,7 @@ pub struct OptionsSnapshot {
     pub line_scroll_speed: f32,
     /// The `Options::scroll_zoom_speed` field.
     pub scroll_zoom_speed: f32,
-        /// The `Options::input_options` field.
+    /// The `Options::input_options` field.
     pub input_options: InputOptions,
     /// The `Options::reduce_texture_memory` field.
     pub reduce_texture_memory: bool,
@@ -271,7 +281,13 @@ pub struct SnapshotSerialize<'a, T>(&'a T);
 impl<'a> serde::Serialize for SnapshotSerialize<'a, Memory> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut serialize_tuple = serializer.serialize_tuple(MemorySnapshot::FIELDS)?;
-        serialize_tuple.serialize_element(LabelSelectionState::from_label_selection_state(&self.0.data.get_temp::<egui::text_selection::LabelSelectionState>(Id::new(ViewportId::ROOT)).unwrap_or_default()))?;
+        serialize_tuple.serialize_element(LabelSelectionState::from_label_selection_state(
+            &self
+                .0
+                .data
+                .get_temp::<egui::text_selection::LabelSelectionState>(Id::new(ViewportId::ROOT))
+                .unwrap_or_default(),
+        ))?;
         serialize_tuple.serialize_element(&self.0.new_font_definitions)?;
         serialize_tuple.serialize_element(&self.0.add_fonts)?;
         serialize_tuple.serialize_element(&self.0.viewport_id)?;
@@ -318,14 +334,12 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, ViewportIdMap<Areas>> {
 
 impl<'a> serde::Serialize for SnapshotSerialize<'a, Areas> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut serialize_tuple = serializer.serialize_tuple(9)?;
+        let mut serialize_tuple = serializer.serialize_tuple(7)?;
         serialize_tuple.serialize_element(&SnapshotSerialize(&self.0.areas))?;
         serialize_tuple.serialize_element(&self.0.visible_areas_last_frame)?;
         serialize_tuple.serialize_element(&self.0.visible_areas_current_frame)?;
         serialize_tuple.serialize_element(&self.0.order)?;
         serialize_tuple.serialize_element(&self.0.order_map)?;
-        serialize_tuple.serialize_element(&self.0.visible_current_frame)?;
-        serialize_tuple.serialize_element(&self.0.visible_last_frame)?;
         serialize_tuple.serialize_element(&self.0.wants_to_be_on_top)?;
         serialize_tuple.serialize_element(&self.0.sublayers)?;
         serialize_tuple.end()
@@ -679,7 +693,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportIdMap<A
 
 impl<'de> serde::de::Deserialize<'de> for SnapshotDeserialize<Areas> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_tuple(9, SnapshotDeserializeVisitor::<Areas>::default())
+        deserializer.deserialize_tuple(7, SnapshotDeserializeVisitor::<Areas>::default())
     }
 }
 
@@ -696,29 +710,23 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<Areas> {
             .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?
             .0;
         let visible_areas_last_frame = seq
-        .next_element()?
-        .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-    let visible_areas_current_frame = seq
-    .next_element()?
-    .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+        let visible_areas_current_frame = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
         let order = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
         let order_map = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
-        let visible_current_frame = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
-        let visible_last_frame = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
         let wants_to_be_on_top = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
         let sublayers = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
 
         Ok(SnapshotDeserialize(Areas {
             areas,
@@ -726,11 +734,8 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<Areas> {
             visible_areas_current_frame,
             order,
             order_map,
-            visible_current_frame,
-            visible_last_frame,
             wants_to_be_on_top,
             sublayers,
-
         }))
     }
 }
@@ -879,8 +884,8 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportStateSn
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(10, &self))?;
         let num_multipass_in_row = seq
-        .next_element()?
-        .ok_or_else(|| serde::de::Error::invalid_length(11, &self))?;
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(11, &self))?;
 
         Ok(SnapshotDeserialize(ViewportStateSnapshot {
             class,
@@ -894,17 +899,14 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<ViewportStateSn
             graphics,
             output,
             commands,
-            num_multipass_in_row
+            num_multipass_in_row,
         }))
     }
 }
 
 impl<'de> serde::de::Deserialize<'de> for SnapshotDeserialize<GraphicLayers> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_tuple(
-            6,
-            SnapshotDeserializeVisitor::<GraphicLayers>::default(),
-        )
+        deserializer.deserialize_tuple(6, SnapshotDeserializeVisitor::<GraphicLayers>::default())
     }
 }
 

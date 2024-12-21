@@ -5,15 +5,15 @@
 //! Provides a host system implementation of [`egui_wings::Egui`] with which WASM
 //! applications may interact.
 
-use egui_wings::*;
 use egui_wings::egui::*;
 pub use egui_wings::Egui;
+use egui_wings::*;
 use geese::*;
 
 /// Implements the `egui_wings::Egui` trait for WASM guest modules.
 pub struct EguiHost {
     /// The `egui` context to share with WASM modules.
-    ctx: Context
+    ctx: Context,
 }
 
 impl EguiHost {
@@ -47,7 +47,7 @@ impl Egui for EguiHost {
 impl GeeseSystem for EguiHost {
     fn new(_: GeeseContextHandle<Self>) -> Self {
         Self {
-            ctx: Context::default()
+            ctx: Context::default(),
         }
     }
 }

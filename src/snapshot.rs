@@ -1063,7 +1063,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::Shape> 
             7 => seq
                 .next_element::<SnapshotDeserialize<epaint::TextShape>>()?
                 .map(|x| epaint::Shape::Text(x.0)),
-            8 => seq.next_element::<epaint::Mesh>()?.map(epaint::Shape::Mesh),
+            8 => seq.next_element::<std::sync::Arc<epaint::Mesh>>()?.map(epaint::Shape::Mesh),
             9 => seq
                 .next_element::<epaint::QuadraticBezierShape>()?
                 .map(epaint::Shape::QuadraticBezier),

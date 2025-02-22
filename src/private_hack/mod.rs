@@ -534,11 +534,8 @@ pub struct PerLayerState {
 }
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-pub struct Sense {
-    pub click: bool,
-    pub drag: bool,
-    pub focusable: bool,
-}
+pub struct Sense(u8);
+
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct TooltipPassState {

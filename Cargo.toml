@@ -17,15 +17,10 @@ example_guest = { path = "egui_wings_example/example_guest" }
 example_host = { path = "egui_wings_example/example_host" }
 
 # External dependencies
-#egui = { version = "=0.30.0", default-features = false, features = [ "serde" ] }
-#egui_demo_lib = { version = "0.30.0", default-features = false }
-#egui-wgpu = { version = "0.30.0", default-features = false, features = ["winit"] }
-#egui-winit = { version = "0.30.0", default-features = false, features = ["clipboard", "links"] }
-
-egui = { git = "https://github.com/emilk/egui", rev = "3586041", default-features = false, features = [ "serde" ] }
-egui_demo_lib = { git = "https://github.com/emilk/egui", rev = "3586041", default-features = false }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "3586041", default-features = false, features = ["winit"] }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "3586041", default-features = false, features = ["clipboard", "links"] }
+egui = { version = "=0.31", default-features = false, features = [ "serde" ] }
+egui_demo_lib = { version = "0.31", default-features = false }
+egui-wgpu = { version = "0.31", default-features = false, features = ["winit"] }
+egui-winit = { version = "0.31", default-features = false, features = ["clipboard", "links"] }
 
 geese = { version = "0.3.10", default-features = false }
 pollster = { version = "0.3.0", default-features = false }

@@ -529,7 +529,7 @@ pub type IdMap<V> = std::collections::HashMap<Id, V, BuildIdHasher>;
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct PerLayerState {
-    pub open_popups: ahash::HashSet<Id>,
+    pub open_popups: IdSet,
     pub widget_with_tooltip: Option<Id>,
 }
 

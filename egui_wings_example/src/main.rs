@@ -83,7 +83,7 @@ async fn run() {
     let initial_width = 1360;
     let initial_height = 768;
     let _ = window.request_inner_size(PhysicalSize::new(initial_width, initial_height));
-    let instance = Instance::new(InstanceDescriptor::default());
+    let instance = Instance::new(&InstanceDescriptor::default());
     let surface = instance
         .create_surface(window.clone())
         .expect("Failed to create surface!");

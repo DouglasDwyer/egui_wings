@@ -521,7 +521,7 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, epaint::TextShape> {
         serialize_tuple.serialize_element(&self.0.galley.job.halign)?;
         serialize_tuple.serialize_element(&self.0.galley.job.justify)?;
         serialize_tuple
-            .serialize_element(&self.0.galley.job.round_output_size_to_nearest_ui_point)?;
+            .serialize_element(&self.0.galley.job.round_output_to_gui)?;
 
         serialize_tuple.serialize_element(&self.0.underline)?;
         serialize_tuple.serialize_element(&self.0.fallback_color)?;
@@ -1052,7 +1052,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::Shape> 
                 .next_element::<epaint::EllipseShape>()?
                 .map(epaint::Shape::Ellipse),
             4 => seq
-                .next_element::<([emath::Pos2; 2], epaint::PathStroke)>()?
+                .next_element::<([emath::Pos2; 2], epaint::Stroke)>()?
                 .map(|(points, stroke)| epaint::Shape::LineSegment { points, stroke }),
             5 => seq
                 .next_element::<epaint::PathShape>()?
@@ -1063,7 +1063,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::Shape> 
             7 => seq
                 .next_element::<SnapshotDeserialize<epaint::TextShape>>()?
                 .map(|x| epaint::Shape::Text(x.0)),
-            8 => seq.next_element::<epaint::Mesh>()?.map(epaint::Shape::Mesh),
+            8 => seq.next_element::<std::sync::Arc<epaint::Mesh>>()?.map(epaint::Shape::Mesh),
             9 => seq
                 .next_element::<epaint::QuadraticBezierShape>()?
                 .map(epaint::Shape::QuadraticBezier),
@@ -1149,7 +1149,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::TextSha
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?;
 
-        let round_output_size_to_nearest_ui_point = seq
+        let round_output_to_gui = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
 
@@ -1161,7 +1161,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::TextSha
             break_on_newline,
             halign,
             justify,
-            round_output_size_to_nearest_ui_point,
+            round_output_to_gui,
         });
 
         let underline = seq

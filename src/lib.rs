@@ -85,7 +85,7 @@ pub trait Egui: 'static {
 
 impl dyn Egui {
     /// Initiates an `egui` transaction and produces a temporary handle to the `egui::Context`.
-    pub fn context(&self) -> EguiHandle {
+    pub fn context(&'_ self) -> EguiHandle<'_> {
         let mut initialized = false;
         let context = CONTEXT.get_or_init(|| {
             let result = Context::default();
@@ -161,7 +161,7 @@ impl CreateContextSnapshot {
         let frame_nr = ctx
             .viewports
             .get(&ctx.last_viewport)
-            .map(|x| x.repaint.cumulative_pass_nr)
+            .map(|x| x.repaint.cumulative_frame_nr)
             .unwrap_or(u64::MAX);
         let new_frame = frame_nr != value.deltas.frame_count;
         if let Some(style) = value.style {
@@ -206,7 +206,7 @@ impl CreateContextSnapshot {
         ctx.memory.new_font_definitions = snapshot.new_font_definitions;
         ctx.memory.add_fonts = snapshot.add_fonts;
         ctx.memory.viewport_id = snapshot.viewport_id;
-        ctx.memory.popup = snapshot.popup;
+        ctx.memory.popups = snapshot.popups;
         ctx.memory.everything_is_visible = snapshot.everything_is_visible;
         ctx.memory.to_global = snapshot.to_global;
         ctx.memory.areas = snapshot.areas;
@@ -226,8 +226,6 @@ impl CreateContextSnapshot {
         ctx.memory.options.screen_reader = snapshot.screen_reader;
         ctx.memory.options.preload_font_glyphs = snapshot.preload_font_glyphs;
         ctx.memory.options.warn_on_id_clash = snapshot.warn_on_id_clash;
-        ctx.memory.options.line_scroll_speed = snapshot.line_scroll_speed;
-        ctx.memory.options.scroll_zoom_speed = snapshot.scroll_zoom_speed;
         ctx.memory.options.input_options = snapshot.input_options;
         ctx.memory.options.reduce_texture_memory = snapshot.reduce_texture_memory;
     }
@@ -249,7 +247,8 @@ impl CreateContextSnapshot {
             viewport.used = snapshot.used;
             viewport.hits = snapshot.hits;
             viewport.interact_widgets = snapshot.interact_widgets;
-            viewport.repaint.cumulative_pass_nr = deltas.frame_count;
+            viewport.repaint.cumulative_pass_nr = deltas.pass_count;
+            viewport.repaint.cumulative_frame_nr = deltas.frame_count;
             viewport.graphics = snapshot.graphics;
             viewport.output = snapshot.output;
             viewport.commands = snapshot.commands;
@@ -307,6 +306,8 @@ impl CreateContextSnapshot {
                 ctx.font_definitions = font_definitions;
             }
 
+            let text_alpha_from_coverage = ctx.memory.options.style().visuals.text_alpha_from_coverage;
+
             let mut is_new = false;
 
             let fonts = ctx.fonts.entry(pixels_per_point.into()).or_insert_with(|| {
@@ -314,12 +315,13 @@ impl CreateContextSnapshot {
                 egui::epaint::Fonts::new(
                     pixels_per_point,
                     max_texture_side,
+                    text_alpha_from_coverage,
                     ctx.font_definitions.clone(),
                 )
             });
 
             {
-                fonts.begin_pass(pixels_per_point, max_texture_side);
+                fonts.begin_pass(pixels_per_point, max_texture_side, text_alpha_from_coverage);
             }
 
             if is_new && ctx.memory.options.preload_font_glyphs {

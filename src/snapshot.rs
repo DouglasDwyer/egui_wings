@@ -22,6 +22,8 @@ pub struct ContextSnapshotDeltas {
     pub(super) font_definitions_count: u64,
     /// The number of frames that have elapsed.
     pub(super) frame_count: u64,
+    /// The number of passes that have elapsed.
+    pub(super) pass_count: u64,
     /// The number of times that the style has changed.
     pub(super) style_count: u64,
 }
@@ -35,15 +37,23 @@ impl ContextSnapshotDeltas {
         let mut previous_deltas = ctx.memory.data.get_temp::<Self>(Id::NULL).unwrap_or(Self {
             font_definitions_count: 0,
             frame_count: 0,
+            pass_count: 0,
             style_count: 0,
         });
 
         let frame_count = ctx
             .viewports
             .get(&ctx.last_viewport)
-            .map(|x| x.repaint.cumulative_pass_nr)
+            .map(|x| x.repaint.cumulative_frame_nr)
             .unwrap_or(0);
         previous_deltas.frame_count = frame_count;
+
+        let pass_count = ctx
+            .viewports
+            .get(&ctx.last_viewport)
+            .map(|x| x.repaint.cumulative_pass_nr)
+            .unwrap_or(0);
+        previous_deltas.pass_count = pass_count;
 
         let new_style = ctx.memory.options.style().clone();
         if ctx
@@ -67,6 +77,7 @@ impl Default for ContextSnapshotDeltas {
         Self {
             font_definitions_count: u64::MAX,
             frame_count: u64::MAX,
+            pass_count: u64::MAX,
             style_count: u64::MAX,
         }
     }
@@ -130,8 +141,6 @@ pub(super) struct MemorySnapshot {
     pub add_fonts: Vec<FontInsert>,
     /// The `Memory::viewport_id` field.
     pub viewport_id: ViewportId,
-    /// The `Memory::popup` field.
-    pub popup: Option<Id>,
     /// The `Memory::everything_is_visible` field.
     pub everything_is_visible: bool,
     /// The `Memory::to_global` field.
@@ -142,11 +151,13 @@ pub(super) struct MemorySnapshot {
     pub interactions: ViewportIdMap<InteractionState>,
     /// The `Memory::focus` field.
     pub focus: ViewportIdMap<Focus>,
+/// The `Memory::popups` field.
+    pub popups: ViewportIdMap<OpenPopup>,
 }
 
 impl MemorySnapshot {
     /// The number of fields that this struct has.
-    const FIELDS: usize = 10;
+    const FIELDS: usize = 11;
 }
 
 /// Holds the instantaneous state of an `Options` for synchronizing
@@ -173,10 +184,6 @@ pub struct OptionsSnapshot {
     pub preload_font_glyphs: bool,
     /// The `Options::warn_on_id_clash` field.
     pub warn_on_id_clash: bool,
-    /// The `Options::line_scroll_speed` field.
-    pub line_scroll_speed: f32,
-    /// The `Options::scroll_zoom_speed` field.
-    pub scroll_zoom_speed: f32,
     /// The `Options::input_options` field.
     pub input_options: InputOptions,
     /// The `Options::reduce_texture_memory` field.
@@ -185,7 +192,7 @@ pub struct OptionsSnapshot {
 
 impl OptionsSnapshot {
     /// The number of fields that this struct has.
-    const FIELDS: usize = 13;
+    const FIELDS: usize = 11;
 }
 
 /// A serialized version of `epaint::text::TextWrapping`
@@ -291,12 +298,12 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, Memory> {
         serialize_tuple.serialize_element(&self.0.new_font_definitions)?;
         serialize_tuple.serialize_element(&self.0.add_fonts)?;
         serialize_tuple.serialize_element(&self.0.viewport_id)?;
-        serialize_tuple.serialize_element(&self.0.popup)?;
         serialize_tuple.serialize_element(&self.0.everything_is_visible)?;
         serialize_tuple.serialize_element(&self.0.to_global)?;
         serialize_tuple.serialize_element(&SnapshotSerialize(&self.0.areas))?;
         serialize_tuple.serialize_element(&self.0.interactions)?;
         serialize_tuple.serialize_element(&self.0.focus)?;
+        serialize_tuple.serialize_element(&self.0.popups)?;
         serialize_tuple.end()
     }
 }
@@ -314,8 +321,6 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, Options> {
         serialize_tuple.serialize_element(&self.0.screen_reader)?;
         serialize_tuple.serialize_element(&self.0.preload_font_glyphs)?;
         serialize_tuple.serialize_element(&self.0.warn_on_id_clash)?;
-        serialize_tuple.serialize_element(&self.0.line_scroll_speed)?;
-        serialize_tuple.serialize_element(&self.0.scroll_zoom_speed)?;
         serialize_tuple.serialize_element(&self.0.input_options)?;
         serialize_tuple.serialize_element(&self.0.reduce_texture_memory)?;
         serialize_tuple.end()
@@ -634,23 +639,23 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<MemorySnapshot>
         let viewport_id = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
-        let popup = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
         let everything_is_visible = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
         let to_global = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
         let areas = seq
             .next_element::<SnapshotDeserialize<ViewportIdMap<Areas>>>()?
-            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?
+            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?
             .0;
         let interactions = seq
             .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
+            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?;
         let focus = seq
+            .next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
+        let popups = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(9, &self))?;
 
@@ -659,12 +664,12 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<MemorySnapshot>
             new_font_definitions,
             add_fonts,
             viewport_id,
-            popup,
             everything_is_visible,
             to_global,
             areas,
             interactions,
             focus,
+            popups
         }))
     }
 }
@@ -1184,16 +1189,10 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::TextSha
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
 
-        let galley = Arc::new(epaint::Galley {
-            job,
-            rows: Vec::new(),
-            elided: false,
-            rect: emath::Rect::ZERO,
-            mesh_bounds: emath::Rect::ZERO,
-            num_indices: 0,
-            num_vertices: 0,
-            pixels_per_point: 0.0,
-        });
+        
+        let fonts = epaint::text::Fonts::new(1.0, 2048, epaint::image::AlphaFromCoverage::Linear, FontDefinitions::default());
+        
+        let galley = fonts.layout_job(Arc::unwrap_or_clone(job));
 
         Ok(SnapshotDeserialize(epaint::TextShape {
             pos,

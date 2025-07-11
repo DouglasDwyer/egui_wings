@@ -83,8 +83,6 @@ pub struct Memory {
     #[serde(skip)]
     pub viewport_id: ViewportId,
     #[serde(skip)]
-    pub popup: Option<Id>,
-    #[serde(skip)]
     pub everything_is_visible: bool,
     pub to_global: ahash::HashMap<LayerId, TSTransform>,
     pub areas: ViewportIdMap<Areas>,
@@ -92,6 +90,15 @@ pub struct Memory {
     pub interactions: ViewportIdMap<InteractionState>,
     #[serde(skip)]
     pub focus: ViewportIdMap<Focus>,
+    #[serde(skip)]
+    pub popups: ViewportIdMap<OpenPopup>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct OpenPopup {
+    pub id: Id,
+    pub pos: Option<Pos2>,
+    pub open_this_frame: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,8 +188,6 @@ pub struct Options {
     pub screen_reader: bool,
     pub preload_font_glyphs: bool,
     pub warn_on_id_clash: bool,
-    pub line_scroll_speed: f32,
-    pub scroll_zoom_speed: f32,
     pub input_options: InputOptions,
     pub reduce_texture_memory: bool,
 }
@@ -246,6 +251,7 @@ impl Default for Style {
         Self {
             override_font_id: None,
             override_text_style: None,
+            override_text_valign: None,
             text_styles: default_text_styles(),
             drag_value_text_style: TextStyle::Button,
             number_formatter: NumberFormatter(Arc::new(emath::format_with_decimals_in_range)),
@@ -261,6 +267,8 @@ impl Default for Style {
             url_in_tooltip: false,
             always_scroll_the_only_direction: false,
             scroll_animation: ScrollAnimation::default(),
+            compact_menu_style: false,
+            
         }
     }
 }
@@ -274,15 +282,21 @@ pub enum ThemePreference {
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct InputOptions {
+    pub line_scroll_speed: f32,
+    pub scroll_zoom_speed: f32,
     pub max_click_dist: f32,
     pub max_click_duration: f64,
     pub max_double_click_delay: f64,
+    pub zoom_modifier: Modifiers,
+    pub horizontal_scroll_modifier: Modifiers,
+    pub vertical_scroll_modifier: Modifiers,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Style {
     pub override_text_style: Option<TextStyle>,
     pub override_font_id: Option<FontId>,
+    pub override_text_valign: Option<Align>,
     pub text_styles: std::collections::BTreeMap<TextStyle, FontId>,
     pub drag_value_text_style: TextStyle,
     #[serde(default = "default_number_formatter", skip)]
@@ -300,6 +314,7 @@ pub struct Style {
     pub url_in_tooltip: bool,
     pub always_scroll_the_only_direction: bool,
     pub scroll_animation: ScrollAnimation,
+    pub compact_menu_style: bool,
 }
 
 fn default_number_formatter() -> NumberFormatter {
@@ -399,6 +414,7 @@ pub struct ViewportState {
 }
 
 pub struct ViewportRepaintInfo {
+    pub cumulative_frame_nr: u64,
     pub cumulative_pass_nr: u64,
     pub repaint_delay: Duration,
     pub outstanding: u8,

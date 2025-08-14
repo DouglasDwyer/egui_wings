@@ -514,20 +514,9 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, Vec<epaint::Shape>> {
 
 impl<'a> serde::Serialize for SnapshotSerialize<'a, epaint::TextShape> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut serialize_tuple = serializer.serialize_tuple(14)?;
+        let mut serialize_tuple = serializer.serialize_tuple(7)?;
         serialize_tuple.serialize_element(&self.0.pos)?;
-
-        serialize_tuple.serialize_element(&self.0.galley.job.text)?;
-        serialize_tuple.serialize_element(&self.0.galley.job.sections)?;
-        serialize_tuple
-            .serialize_element(&TextWrappingSnapshot::from(self.0.galley.job.wrap.clone()))?;
-        serialize_tuple.serialize_element(&self.0.galley.job.first_row_min_height)?;
-        serialize_tuple.serialize_element(&self.0.galley.job.break_on_newline)?;
-        serialize_tuple.serialize_element(&self.0.galley.job.halign)?;
-        serialize_tuple.serialize_element(&self.0.galley.job.justify)?;
-        serialize_tuple
-            .serialize_element(&self.0.galley.job.round_output_to_gui)?;
-
+        serialize_tuple.serialize_element(&self.0.galley)?;
         serialize_tuple.serialize_element(&self.0.underline)?;
         serialize_tuple.serialize_element(&self.0.fallback_color)?;
         serialize_tuple.serialize_element(&self.0.override_text_color)?;
@@ -1108,7 +1097,7 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<Vec<epaint::Sha
 impl<'de> serde::de::Deserialize<'de> for SnapshotDeserialize<epaint::TextShape> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_tuple(
-            14,
+            7,
             SnapshotDeserializeVisitor::<epaint::TextShape>::default(),
         )
     }
@@ -1126,48 +1115,9 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::TextSha
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
 
-        let text = seq
+        let galley = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-
-        let sections = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
-
-        let wrap = seq
-            .next_element::<TextWrappingSnapshot>()?
-            .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
-
-        let first_row_min_height = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
-
-        let break_on_newline = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
-
-        let halign = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
-
-        let justify = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(7, &self))?;
-
-        let round_output_to_gui = seq
-            .next_element()?
-            .ok_or_else(|| serde::de::Error::invalid_length(8, &self))?;
-
-        let job = Arc::new(epaint::text::LayoutJob {
-            text,
-            sections,
-            wrap: wrap.into(),
-            first_row_min_height,
-            break_on_newline,
-            halign,
-            justify,
-            round_output_to_gui,
-        });
 
         let underline = seq
             .next_element()?
@@ -1188,11 +1138,6 @@ impl<'de> serde::de::Visitor<'de> for SnapshotDeserializeVisitor<epaint::TextSha
         let angle = seq
             .next_element()?
             .ok_or_else(|| serde::de::Error::invalid_length(6, &self))?;
-
-        
-        let fonts = epaint::text::Fonts::new(1.0, 2048, epaint::image::AlphaFromCoverage::Linear, FontDefinitions::default());
-        
-        let galley = fonts.layout_job(Arc::unwrap_or_clone(job));
 
         Ok(SnapshotDeserialize(epaint::TextShape {
             pos,

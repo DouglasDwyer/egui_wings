@@ -30,6 +30,7 @@ wasmtime_runtime_layer = { version = "26.0.0", default-features = true }
 wings = { version = "0.1.5", default-features = false }
 wings_host = { version = "0.1.5", default-features = false }
 winit = { version = "0.30.7", default-features = false, features = [ "rwh_06" ] }
+wgpu = "25"
 
 [workspace.package]
 version = "0.5.0"

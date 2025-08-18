@@ -1048,9 +1048,9 @@ dependencies = [
 
 [[package]]
 name = "geese"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c75cfb495222553bf8803e2b0ff6dee8d701c48c064758c88d12081ea2eaf10b"
+checksum = "280f39b24c05d7e452df88587a325bbbea3770ca1ec79bb7bb069316b874dce6"
 dependencies = [
  "bitvec",
  "const_list",

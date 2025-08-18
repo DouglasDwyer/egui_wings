@@ -74,6 +74,17 @@ fn create_geese_context() -> GeeseContext {
 }
 
 async fn run() {
+
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions::default())
+        .await
+        .unwrap();
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor::default())
+        .await
+        .unwrap();
+
     let event_loop = EventLoop::new().unwrap();
 
     let window_attributes =
@@ -83,33 +94,10 @@ async fn run() {
     let initial_width = 1360;
     let initial_height = 768;
     let _ = window.request_inner_size(PhysicalSize::new(initial_width, initial_height));
-    let instance = Instance::new(&InstanceDescriptor::default());
+
     let surface = instance
         .create_surface(window.clone())
         .expect("Failed to create surface!");
-    let power_pref = PowerPreference::default();
-    let adapter = instance
-        .request_adapter(&RequestAdapterOptions {
-            power_preference: power_pref,
-            force_fallback_adapter: false,
-            compatible_surface: Some(&surface),
-        })
-        .await
-        .expect("Failed to find an appropriate adapter");
-
-    let features = Features::empty();
-    let (device, queue) = adapter
-        .request_device(
-            &DeviceDescriptor {
-                label: None,
-                required_features: features,
-                required_limits: Default::default(),
-                memory_hints: wgpu::MemoryHints::Performance,
-            },
-            None,
-        )
-        .await
-        .expect("Failed to create device");
 
     let swapchain_capabilities = surface.get_capabilities(&adapter);
     let selected_format = TextureFormat::Bgra8UnormSrgb;

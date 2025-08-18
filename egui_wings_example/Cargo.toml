@@ -21,3 +21,4 @@ wasmtime_runtime_layer.workspace = true
 wings.workspace = true
 wings_host.workspace = true
 winit.workspace = true
+wgpu.workspace = true

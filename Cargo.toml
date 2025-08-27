@@ -10,9 +10,9 @@ members = [
 [workspace.dependencies]
 
 # Internal dependencies
-egui_wings = { path = ".", version = "0.5.0" }
+egui_wings = { path = ".", version = "0.6.0" }
 egui_wings_example = { path = "egui_wings_example" }
-egui_wings_host = { path = "egui_wings_host", version = "0.5.0" }
+egui_wings_host = { path = "egui_wings_host", version = "0.6.0" }
 example_guest = { path = "egui_wings_example/example_guest" }
 example_host = { path = "egui_wings_example/example_host" }
 
@@ -33,7 +33,7 @@ winit = { version = "0.30.7", default-features = false, features = [ "rwh_06" ] 
 wgpu = "25"
 
 [workspace.package]
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 description = "egui bindings for WASM plugins"
 license = "MIT OR Apache-2.0"

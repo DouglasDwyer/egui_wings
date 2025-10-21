@@ -258,9 +258,7 @@ impl EguiRenderer {
         let egui_renderer = Renderer::new(
             device,
             output_color_format,
-            output_depth_format,
-            msaa_samples,
-            true,
+            RendererOptions::default()
         );
 
         EguiRenderer {
@@ -319,6 +317,7 @@ impl EguiRenderer {
                         load: LoadOp::Load,
                         store: StoreOp::Store,
                     },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 timestamp_writes: None,

@@ -49,11 +49,12 @@ impl Context {
 }
 
 pub struct ContextImpl {
-    pub fonts: std::collections::BTreeMap<OrderedFloat<f32>, Fonts>,
+    pub fonts: Option<Fonts>,
     pub font_definitions: FontDefinitions,
     pub memory: Memory,
     pub animation_manager: AnimationManager,
     pub plugins: Plugins,
+    pub safe_area: SafeAreaInsets,
     pub tex_manager: WrappedTextureManager,
     pub new_zoom_factor: Option<f32>,
     pub os: OperatingSystem,
@@ -186,7 +187,6 @@ pub struct Options {
     pub repaint_on_widget_change: bool,
     pub max_passes: std::num::NonZeroUsize,
     pub screen_reader: bool,
-    pub preload_font_glyphs: bool,
     pub warn_on_id_clash: bool,
     pub input_options: InputOptions,
     pub reduce_texture_memory: bool,
@@ -290,6 +290,7 @@ pub struct InputOptions {
     pub zoom_modifier: Modifiers,
     pub horizontal_scroll_modifier: Modifiers,
     pub vertical_scroll_modifier: Modifiers,
+    pub surrender_focus_on: SurrenderFocusOn,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -388,8 +389,15 @@ pub struct NamedContextCallback {
 }
 
 pub struct Plugins {
-    pub on_begin_pass: Vec<NamedContextCallback>,
-    pub on_end_pass: Vec<NamedContextCallback>,
+    plugins: ahash::HashMap<std::any::TypeId, Arc<Mutex<PluginHandle>>>,
+    plugins_ordered: PluginsOrdered,
+}
+
+#[derive(Clone, Default)]
+pub struct PluginsOrdered(Vec<Arc<Mutex<PluginHandle>>>);
+
+pub struct PluginHandle {
+    plugin: Box<dyn Plugin>,
 }
 
 pub struct WrappedTextureManager(Arc<RwLock<epaint::TextureManager>>);

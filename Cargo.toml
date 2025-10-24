@@ -33,7 +33,7 @@ winit = { version = "0.30.12", default-features = false, features = [ "rwh_06" ]
 wgpu = "27"
 
 [workspace.package]
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 description = "egui bindings for WASM plugins"
 license = "MIT OR Apache-2.0"

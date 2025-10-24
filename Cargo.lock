@@ -730,7 +730,7 @@ dependencies = [
 
 [[package]]
 name = "egui_wings"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "egui",
  "serde",
@@ -739,7 +739,7 @@ dependencies = [
 
 [[package]]
 name = "egui_wings_example"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "egui",
  "egui-wgpu",
@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "egui_wings_host"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "egui_wings",
  "geese",
@@ -876,14 +876,14 @@ checksum = "a5d9305ccc6942a704f4335694ecd3de2ea531b114ac2d51f5f843750787a92f"
 
 [[package]]
 name = "example_host"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "wings",
 ]
 
 [[package]]
 name = "example_plugin"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "egui",
  "egui_demo_lib",

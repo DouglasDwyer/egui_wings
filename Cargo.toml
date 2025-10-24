@@ -10,9 +10,9 @@ members = [
 [workspace.dependencies]
 
 # Internal dependencies
-egui_wings = { path = ".", version = "0.6.0" }
+egui_wings = { path = ".", version = "0.7.0" }
 egui_wings_example = { path = "egui_wings_example" }
-egui_wings_host = { path = "egui_wings_host", version = "0.6.0" }
+egui_wings_host = { path = "egui_wings_host", version = "0.7.0" }
 example_guest = { path = "egui_wings_example/example_guest" }
 example_host = { path = "egui_wings_example/example_host" }
 

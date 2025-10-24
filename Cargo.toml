@@ -17,10 +17,10 @@ example_guest = { path = "egui_wings_example/example_guest" }
 example_host = { path = "egui_wings_example/example_host" }
 
 # External dependencies
-egui = { version = "=0.32", default-features = false, features = [ "serde" ] }
-egui_demo_lib = { version = "0.32", default-features = false }
-egui-wgpu = { version = "0.32", default-features = false, features = ["winit"] }
-egui-winit = { version = "0.32", default-features = false, features = ["clipboard", "links"] }
+egui = { version = "=0.33", default-features = false, features = [ "serde" ] }
+egui_demo_lib = { version = "0.33", default-features = false }
+egui-wgpu = { version = "0.33", default-features = false, features = ["winit"] }
+egui-winit = { version = "0.33", default-features = false, features = ["clipboard", "links"] }
 
 geese = { version = "0.3.11", default-features = false }
 pollster = { version = "0.4.0", default-features = false }
@@ -29,8 +29,8 @@ serde = { version = "1.0.204", default-features = false }
 wasmtime_runtime_layer = { version = "26.0.0", default-features = true }
 wings = { version = "0.1.5", default-features = false }
 wings_host = { version = "0.1.5", default-features = false }
-winit = { version = "0.30.7", default-features = false, features = [ "rwh_06" ] }
-wgpu = "25"
+winit = { version = "0.30.12", default-features = false, features = [ "rwh_06" ] }
+wgpu = "27"
 
 [workspace.package]
 version = "0.6.0"

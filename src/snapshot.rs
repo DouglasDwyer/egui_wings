@@ -180,8 +180,6 @@ pub struct OptionsSnapshot {
     pub max_passes: std::num::NonZeroUsize,
     /// The `Options::screen_reader` field.
     pub screen_reader: bool,
-    /// The `Options::preload_font_glyphs` field.
-    pub preload_font_glyphs: bool,
     /// The `Options::warn_on_id_clash` field.
     pub warn_on_id_clash: bool,
     /// The `Options::input_options` field.
@@ -192,7 +190,7 @@ pub struct OptionsSnapshot {
 
 impl OptionsSnapshot {
     /// The number of fields that this struct has.
-    const FIELDS: usize = 11;
+    const FIELDS: usize = 10;
 }
 
 /// A serialized version of `epaint::text::TextWrapping`
@@ -319,7 +317,6 @@ impl<'a> serde::Serialize for SnapshotSerialize<'a, Options> {
         serialize_tuple.serialize_element(&self.0.repaint_on_widget_change)?;
         serialize_tuple.serialize_element(&self.0.max_passes)?;
         serialize_tuple.serialize_element(&self.0.screen_reader)?;
-        serialize_tuple.serialize_element(&self.0.preload_font_glyphs)?;
         serialize_tuple.serialize_element(&self.0.warn_on_id_clash)?;
         serialize_tuple.serialize_element(&self.0.input_options)?;
         serialize_tuple.serialize_element(&self.0.reduce_texture_memory)?;

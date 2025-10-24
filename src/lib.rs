@@ -224,7 +224,6 @@ impl CreateContextSnapshot {
         ctx.memory.options.repaint_on_widget_change = snapshot.repaint_on_widget_change;
         ctx.memory.options.max_passes = snapshot.max_passes;
         ctx.memory.options.screen_reader = snapshot.screen_reader;
-        ctx.memory.options.preload_font_glyphs = snapshot.preload_font_glyphs;
         ctx.memory.options.warn_on_id_clash = snapshot.warn_on_id_clash;
         ctx.memory.options.input_options = snapshot.input_options;
         ctx.memory.options.reduce_texture_memory = snapshot.reduce_texture_memory;
@@ -266,12 +265,12 @@ impl CreateContextSnapshot {
             .get(&ctx.last_viewport)
             .map(|x| x.input.pixels_per_point)
             .unwrap_or(1.0);
-        if let Some(fonts) = ctx.fonts.get(&pixels_per_point.into()) {
+        if let Some(ref mut fonts) = &mut ctx.fonts {
             for viewport in ctx.viewports.values_mut() {
                 for paint_lists in viewport.graphics.as_inner_mut() {
                     for paint_list in paint_lists.values_mut() {
                         for clipped_shape in paint_list.as_inner_mut() {
-                            Self::reinitialize_galleys_for_shape(&mut clipped_shape.shape, fonts);
+                            Self::reinitialize_galleys_for_shape(&mut clipped_shape.shape, fonts, pixels_per_point);
                         }
                     }
                 }
@@ -281,14 +280,16 @@ impl CreateContextSnapshot {
 
     /// Reinitializes any galleys associated with this shape from the cache,
     /// because galley data is not serialized within [`ContextSnapshot`]s.
-    fn reinitialize_galleys_for_shape(shape: &mut Shape, fonts: &egui::epaint::Fonts) {
+    fn reinitialize_galleys_for_shape(shape: &mut Shape, fonts: &mut egui::epaint::Fonts, pixels_per_point: f32) {
         match shape {
             Shape::Vec(x) => {
                 for shape in x {
-                    Self::reinitialize_galleys_for_shape(shape, fonts);
+                    Self::reinitialize_galleys_for_shape(shape, fonts, pixels_per_point);
                 }
             }
-            Shape::Text(x) => x.galley = fonts.layout_job((*x.galley.job).clone()),
+            Shape::Text(x) =>{
+             x.galley = fonts.with_pixels_per_point(pixels_per_point).layout_job((*x.galley.job).clone());
+        },
             _ => {}
         }
     }
@@ -297,39 +298,26 @@ impl CreateContextSnapshot {
     fn update_fonts_mut(ctx: &mut private_hack::ContextImpl) {
         if let Some(viewport) = ctx.viewports.get(&ctx.last_viewport) {
             let input = &viewport.input;
-            let pixels_per_point = input.pixels_per_point();
             let max_texture_side = input.max_texture_side;
 
             if let Some(font_definitions) = ctx.memory.new_font_definitions.take() {
                 // New font definition loaded, so we need to reload all fonts.
-                ctx.fonts.clear();
+                ctx.fonts = None;
                 ctx.font_definitions = font_definitions;
             }
 
             let text_alpha_from_coverage = ctx.memory.options.style().visuals.text_alpha_from_coverage;
 
-            let mut is_new = false;
-
-            let fonts = ctx.fonts.entry(pixels_per_point.into()).or_insert_with(|| {
-                is_new = true;
-                egui::epaint::Fonts::new(
-                    pixels_per_point,
-                    max_texture_side,
-                    text_alpha_from_coverage,
-                    ctx.font_definitions.clone(),
-                )
+            let fonts = ctx.fonts.get_or_insert_with(|| {
+            text::Fonts::new(
+                max_texture_side,
+                text_alpha_from_coverage,
+                ctx.font_definitions.clone(),
+            )
             });
 
             {
-                fonts.begin_pass(pixels_per_point, max_texture_side, text_alpha_from_coverage);
-            }
-
-            if is_new && ctx.memory.options.preload_font_glyphs {
-                // Preload the most common characters for the most common fonts.
-                // This is not very important to do, but may save a few GPU operations.
-                for font_id in ctx.memory.options.style().text_styles.values() {
-                    fonts.lock().fonts.font(font_id).preload_common_characters();
-                }
+                fonts.begin_pass(max_texture_side, text_alpha_from_coverage);
             }
         }
     }
